@@ -24,25 +24,21 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LinkOff
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -52,8 +48,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -72,9 +66,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -108,19 +99,15 @@ fun BackupSyncScreen(
 ) {
     val context = LocalContext.current
     val status by viewModel.backupStatus.collectAsState()
-    var showDirectEmailDialog by remember { mutableStateOf(false) }
     var showDisconnectConfirm by remember { mutableStateOf(false) }
     var showDeleteAllConfirm by remember { mutableStateOf(false) }
     var showFrequencyPicker by remember { mutableStateOf(false) }
     var showRestoreModeDialog by remember { mutableStateOf<Uri?>(null) }
 
-    // File picker launcher for restoring from local / downloaded backup file
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        if (uri != null) {
-            showRestoreModeDialog = uri
-        }
+        if (uri != null) showRestoreModeDialog = uri
     }
 
     Dialog(
@@ -137,7 +124,7 @@ fun BackupSyncScreen(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
 
-                // ── Header ───────────────────────────────────────────────────
+                // Header
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -153,19 +140,22 @@ fun BackupSyncScreen(
                             )
                         )
                         Text(
-                            "Private email backup & restoration",
+                            "Keep your data safe",
                             style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
                         )
                     }
                     IconButton(
                         onClick = onDismiss,
-                        modifier = Modifier.size(36.dp).clip(CircleShape).background(CardBackgroundElevated)
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(CardBackgroundElevated)
                     ) {
                         Icon(Icons.Default.Close, null, tint = TextSecondary, modifier = Modifier.size(18.dp))
                     }
                 }
 
-                // ── Progress overlay ─────────────────────────────────────────
+                // Progress overlay
                 AnimatedVisibility(
                     visible = status.operationStatus == BackupOperationStatus.IN_PROGRESS,
                     enter = fadeIn(), exit = fadeOut()
@@ -191,7 +181,10 @@ fun BackupSyncScreen(
                         Spacer(Modifier.height(6.dp))
                         LinearProgressIndicator(
                             progress = { status.operationProgress },
-                            modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(3.dp)
+                                .clip(RoundedCornerShape(2.dp)),
                             color = BankAccent,
                             trackColor = CardBorder,
                             strokeCap = StrokeCap.Round
@@ -199,7 +192,7 @@ fun BackupSyncScreen(
                     }
                 }
 
-                // ── Success/Fail banner ───────────────────────────────────────
+                // Success/Fail banner
                 AnimatedVisibility(
                     visible = status.operationStatus == BackupOperationStatus.SUCCESS ||
                               status.operationStatus == BackupOperationStatus.FAILED,
@@ -215,7 +208,10 @@ fun BackupSyncScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
                             Icon(
                                 if (isSuccess) Icons.Default.Check else Icons.Default.CloudOff,
                                 null,
@@ -234,166 +230,133 @@ fun BackupSyncScreen(
                     }
                 }
 
-                // ── Scrollable content ────────────────────────────────────────
+                // Scrollable content
                 LazyColumn(
-                    modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Privacy notice
+                    // Google Account
                     item {
                         Spacer(Modifier.height(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF0C1826))
-                                .border(1.dp, Color(0xFF1A3048), RoundedCornerShape(12.dp))
-                                .padding(12.dp)
-                        ) {
-                            Text(
-                                "🔒  Backups are saved directly in your personal email inbox. Money Minder uses zero external cloud servers.",
-                                style = MaterialTheme.typography.bodySmall.copy(color = BankAccent, fontSize = 11.sp),
-                                lineHeight = 16.sp
-                            )
-                        }
-                    }
-
-                    // ── 1-TAP INSTANT BACKUP (Zero-Setup / Zero Errors) ───────
-                    item {
-                        BackupSectionHeader("INSTANT EMAIL BACKUP")
-                        Spacer(Modifier.height(6.dp))
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(Color(0xFF0E2316))
-                                .border(1.dp, Color(0xFF1C502E), RoundedCornerShape(14.dp))
-                                .clickable {
-                                    viewModel.shareBackupViaEmail(context)
-                                }
-                                .padding(14.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                BackupIconCircle(Icons.Default.Send, IncomeGreen)
-                                Spacer(Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        "Backup & Send to Gmail",
-                                        style = MaterialTheme.typography.titleMedium.copy(
-                                            fontWeight = FontWeight.Bold, color = IncomeGreen, fontSize = 14.sp
-                                        )
-                                    )
-                                    Text(
-                                        "1-Tap: Attaches backup directly in your Gmail app to email to yourself. 100% working, no setup needed.",
-                                        style = MaterialTheme.typography.bodySmall.copy(
-                                            color = Color(0xFF81C784), fontSize = 11.sp
-                                        ),
-                                        lineHeight = 15.sp
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // ── BACKUP ACCOUNT section ────────────────────────────────
-                    item {
-                        BackupSectionHeader("AUTOMATED BACKGROUND BACKUP")
-                        Spacer(Modifier.height(6.dp))
-
                         if (status.isConnected) {
-                            // Connected state card
-                            BackupInfoCard(
-                                icon = Icons.Default.Email,
-                                iconTint = IncomeGreen,
-                                title = status.connectedEmail,
-                                subtitle = "Connected for automatic scheduled backups"
-                            )
-                        } else {
-                            BackupActionCard(
-                                icon = Icons.Default.Email,
-                                iconTint = BankAccent,
-                                title = "Connect Email for Background Sync",
-                                subtitle = "Connect your email address to enable automatic daily backups in background",
-                                onClick = { showDirectEmailDialog = true }
-                            )
-                        }
-                    }
-
-                    // ── AUTOMATIC BACKUP section ──────────────────────────────
-                    item {
-                        BackupSectionHeader("AUTOMATIC BACKUP SCHEDULE")
-                        Spacer(Modifier.height(6.dp))
-
-                        // Auto backup toggle
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(CardBackgroundElevated)
-                                .border(1.dp, CardBorderSubtle, RoundedCornerShape(14.dp))
-                                .padding(14.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color(0xFF0D2211))
+                                    .border(1.dp, Color(0xFF1C502E), RoundedCornerShape(16.dp))
+                                    .padding(16.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    BackupIconCircle(Icons.Default.CloudSync, if (status.isAutoEnabled) IncomeGreen else TextMuted)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF1A3D22)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.CloudDone,
+                                            null,
+                                            tint = IncomeGreen,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
                                     Spacer(Modifier.width(12.dp))
-                                    Column {
-                                        Text("Automatic Backup",
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            status.connectedEmail,
                                             style = MaterialTheme.typography.titleMedium.copy(
-                                                fontWeight = FontWeight.SemiBold, color = TextPrimary, fontSize = 14.sp
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = TextPrimary,
+                                                fontSize = 14.sp
                                             )
                                         )
                                         Text(
-                                            if (status.isAutoEnabled) "Enabled — ${status.frequency.label}" else "Disabled",
+                                            "Connected",
                                             style = MaterialTheme.typography.bodySmall.copy(
-                                                color = if (status.isAutoEnabled) IncomeGreen else TextMuted, fontSize = 11.sp
+                                                color = IncomeGreen, fontSize = 12.sp
                                             )
                                         )
                                     }
                                 }
-                                Switch(
-                                    checked = status.isAutoEnabled,
-                                    onCheckedChange = {
-                                        if (!status.isConnected) {
-                                            showDirectEmailDialog = true
-                                            return@Switch
-                                        }
-                                        viewModel.setAutoBackupEnabled(it)
-                                    },
-                                    enabled = status.isConnected,
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = Color.White,
-                                        checkedTrackColor = IncomeGreen,
-                                        uncheckedThumbColor = TextMuted,
-                                        uncheckedTrackColor = CardBorder
-                                    )
-                                )
                             }
-                        }
-
-                        // Frequency picker
-                        if (status.isAutoEnabled) {
-                            Spacer(Modifier.height(8.dp))
-                            BackupActionCard(
-                                icon = Icons.Default.Schedule,
-                                iconTint = TransferBlueGrey,
-                                title = "Backup Frequency",
-                                subtitle = status.frequency.label,
-                                onClick = { showFrequencyPicker = true }
-                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color(0xFF0C1826))
+                                    .border(1.dp, Color(0xFF1A3048), RoundedCornerShape(16.dp))
+                                    .clickable { viewModel.startOAuthInBrowser(context) }
+                                    .padding(16.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF1A2940)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Email,
+                                            null,
+                                            tint = BankAccent,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            "Sign in with Google",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = BankAccent,
+                                                fontSize = 15.sp
+                                            )
+                                        )
+                                        Text(
+                                            "Enable cloud backup & sync to your Gmail",
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                color = TextSecondary, fontSize = 12.sp
+                                            )
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    // ── BACKUP STATUS section ─────────────────────────────────
+                    // Backup actions
                     item {
-                        BackupSectionHeader("BACKUP STATUS")
+                        BackupSectionHeader("BACKUP")
                         Spacer(Modifier.height(6.dp))
 
+                        if (status.isConnected) {
+                            BackupActionCard(
+                                icon = Icons.Default.CloudUpload,
+                                iconTint = IncomeGreen,
+                                title = "Backup Now",
+                                subtitle = "Upload backup to your Gmail inbox",
+                                onClick = { viewModel.backupNow() }
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+
+                        BackupActionCard(
+                            icon = Icons.Default.Send,
+                            iconTint = BankAccent,
+                            title = "Quick Email Backup",
+                            subtitle = "Share backup file via any email app",
+                            onClick = { viewModel.shareBackupViaEmail(context) }
+                        )
+                    }
+
+                    // Last backup status
+                    item {
                         val hasLastBackup = status.lastBackupAt > 0L
                         val lastBackupText = if (hasLastBackup) {
                             SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
@@ -409,66 +372,127 @@ fun BackupSyncScreen(
                                 if (hasLastBackup && status.lastBackupSizeBytes > 0) {
                                     append("  ·  ${status.lastBackupSizeBytes / 1024} KB")
                                 }
-                                if (status.lastBackupId.isNotBlank()) {
-                                    append("\nID: ${status.lastBackupId.take(8)}…")
-                                }
                             }
                         )
                     }
 
-                    // ── PRIMARY ACTIONS ───────────────────────────────────────
+                    // Restore
                     item {
-                        BackupSectionHeader("RESTORE & HISTORY")
+                        BackupSectionHeader("RESTORE")
                         Spacer(Modifier.height(6.dp))
 
-                        // Restore from File / Email Download
                         BackupActionCard(
                             icon = Icons.Default.FolderOpen,
                             iconTint = BankAccent,
-                            title = "Restore from Backup File",
-                            subtitle = "Pick .mmbackup file from your Downloads or Gmail attachment",
-                            onClick = {
-                                filePickerLauncher.launch("*/*")
-                            }
+                            title = "Restore from File",
+                            subtitle = "Pick .mmbackup file from Downloads or Gmail",
+                            onClick = { filePickerLauncher.launch("*/*") }
                         )
 
-                        Spacer(Modifier.height(8.dp))
-                        BackupActionCard(
-                            icon = Icons.Default.History,
-                            iconTint = TransferBlueGrey,
-                            title = "View Email Backup History",
-                            subtitle = "Search and restore backups directly from connected inbox",
-                            enabled = status.isConnected,
-                            onClick = {
-                                viewModel.loadBackupHistory()
-                                onViewHistory()
-                            }
-                        )
-
-                        Spacer(Modifier.height(8.dp))
-                        BackupActionCard(
-                            icon = Icons.Default.Restore,
-                            iconTint = IncomeGreen,
-                            title = "Restore Assistant",
-                            subtitle = "Restore data from a previous email backup",
-                            enabled = status.isConnected,
-                            onClick = {
-                                viewModel.loadBackupHistory()
-                                onRestoreBackup()
-                            }
-                        )
+                        if (status.isConnected) {
+                            Spacer(Modifier.height(8.dp))
+                            BackupActionCard(
+                                icon = Icons.Default.History,
+                                iconTint = TransferBlueGrey,
+                                title = "Backup History",
+                                subtitle = "Browse and restore from your Gmail backups",
+                                onClick = {
+                                    viewModel.loadBackupHistory()
+                                    onViewHistory()
+                                }
+                            )
+                        }
                     }
 
-                    // ── ACCOUNT MANAGEMENT ────────────────────────────────────
+                    // Auto backup
                     item {
-                        if (status.isConnected) {
+                        BackupSectionHeader("AUTO BACKUP")
+                        Spacer(Modifier.height(6.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(CardBackgroundElevated)
+                                .border(1.dp, CardBorderSubtle, RoundedCornerShape(14.dp))
+                                .padding(14.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    BackupIconCircle(
+                                        Icons.Default.CloudSync,
+                                        if (status.isAutoEnabled) IncomeGreen else TextMuted
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            "Automatic Backup",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = TextPrimary,
+                                                fontSize = 14.sp
+                                            )
+                                        )
+                                        Text(
+                                            if (status.isAutoEnabled) status.frequency.label
+                                            else if (!status.isConnected) "Sign in to enable"
+                                            else "Disabled",
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                color = if (status.isAutoEnabled) IncomeGreen else TextMuted,
+                                                fontSize = 11.sp
+                                            )
+                                        )
+                                    }
+                                }
+                                Switch(
+                                    checked = status.isAutoEnabled,
+                                    onCheckedChange = {
+                                        if (!status.isConnected) {
+                                            viewModel.startOAuthInBrowser(context)
+                                            return@Switch
+                                        }
+                                        viewModel.setAutoBackupEnabled(it)
+                                    },
+                                    enabled = status.isConnected,
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color.White,
+                                        checkedTrackColor = IncomeGreen,
+                                        uncheckedThumbColor = TextMuted,
+                                        uncheckedTrackColor = CardBorder
+                                    )
+                                )
+                            }
+                        }
+
+                        if (status.isAutoEnabled) {
+                            Spacer(Modifier.height(8.dp))
+                            BackupActionCard(
+                                icon = Icons.Default.Schedule,
+                                iconTint = TransferBlueGrey,
+                                title = "Frequency",
+                                subtitle = status.frequency.label,
+                                onClick = { showFrequencyPicker = true }
+                            )
+                        }
+                    }
+
+                    // Account management
+                    if (status.isConnected) {
+                        item {
                             BackupSectionHeader("ACCOUNT")
                             Spacer(Modifier.height(6.dp))
                             BackupActionCard(
                                 icon = Icons.Default.LinkOff,
                                 iconTint = ExpenseRed,
-                                title = "Disconnect Account",
-                                subtitle = "Stop background sync. Local data is not affected.",
+                                title = "Disconnect",
+                                subtitle = "Stop sync. Local data is not affected.",
                                 textColor = ExpenseRed,
                                 onClick = { showDisconnectConfirm = true }
                             )
@@ -477,119 +501,28 @@ fun BackupSyncScreen(
                                 icon = Icons.Default.Delete,
                                 iconTint = ExpenseRed,
                                 title = "Delete Cloud Backups",
-                                subtitle = "Permanently remove all Money Minder backup emails from inbox",
+                                subtitle = "Remove all backup emails from inbox",
                                 textColor = ExpenseRed,
                                 onClick = { showDeleteAllConfirm = true }
                             )
+                            Spacer(Modifier.height(16.dp))
                         }
-                        Spacer(Modifier.height(16.dp))
+                    } else {
+                        item { Spacer(Modifier.height(16.dp)) }
                     }
                 }
             }
         }
     }
 
-    // ── Dialog: Connect Email & Password ──────────────────────────────────────
-    if (showDirectEmailDialog) {
-        var emailInput by remember { mutableStateOf(viewModel.prefs.connectedEmail.ifBlank { "akilask1997@gmail.com" }) }
-        var passwordInput by remember { mutableStateOf("") }
-        var passwordVisible by remember { mutableStateOf(false) }
-
-        AlertDialog(
-            onDismissRequest = { showDirectEmailDialog = false },
-            title = {
-                Text("Connect Email", fontWeight = FontWeight.Bold, color = TextPrimary)
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        "Set your email for private backups. Leave password blank for 1-Tap Gmail mode (no password needed!):",
-                        color = TextSecondary, fontSize = 12.sp
-                    )
-
-                    OutlinedTextField(
-                        value = emailInput,
-                        onValueChange = { emailInput = it },
-                        label = { Text("Email Address") },
-                        placeholder = { Text("akilask1997@gmail.com") },
-                        leadingIcon = { Icon(Icons.Default.Email, null, tint = BankAccent, modifier = Modifier.size(18.dp)) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = BankAccent,
-                            unfocusedBorderColor = CardBorder,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    OutlinedTextField(
-                        value = passwordInput,
-                        onValueChange = { passwordInput = it },
-                        label = { Text("App Password (Optional)") },
-                        placeholder = { Text("Optional — for background auto-sync") },
-                        leadingIcon = { Icon(Icons.Default.Lock, null, tint = IncomeGreen, modifier = Modifier.size(18.dp)) },
-                        trailingIcon = {
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                Icon(
-                                    if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    null, tint = TextMuted, modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        },
-                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = IncomeGreen,
-                            unfocusedBorderColor = CardBorder,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Text(
-                        "💡 Tip: If you leave password blank, you can use the green 1-Tap 'Backup & Send to Gmail' button anytime with zero passwords!",
-                        color = BankAccent, fontSize = 11.sp, lineHeight = 15.sp
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.connectDirectEmail(
-                            email = emailInput,
-                            password = passwordInput,
-                            onSuccess = { showDirectEmailDialog = false }
-                        )
-                    },
-                    enabled = emailInput.isNotBlank(),
-                    colors = ButtonDefaults.buttonColors(containerColor = IncomeGreen)
-                ) {
-                    Text(if (passwordInput.isBlank()) "Save Email" else "Connect", fontWeight = FontWeight.Bold, color = Color.White)
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { showDirectEmailDialog = false }) { Text("Cancel") }
-            },
-            containerColor = CardBackground,
-            shape = RoundedCornerShape(20.dp)
-        )
-    }
-
-
-    // ── Dialog: Select Restore Mode for File Picker ────────────────────────────
+    // Restore mode dialog
     showRestoreModeDialog?.let { uri ->
         AlertDialog(
             onDismissRequest = { showRestoreModeDialog = null },
             title = { Text("Restore Data", fontWeight = FontWeight.Bold, color = TextPrimary) },
             text = {
                 Text(
-                    "How would you like to restore this backup file?\n\n• MERGE: Adds new transactions and keeps your current data intact.\n\n• REPLACE: Replaces current data with the backup contents.",
+                    "How would you like to restore?\n\n• MERGE: Add new data, keep existing.\n• REPLACE: Overwrite with backup.",
                     color = TextSecondary, fontSize = 13.sp, lineHeight = 18.sp
                 )
             },
@@ -600,9 +533,7 @@ fun BackupSyncScreen(
                         viewModel.restoreFromFileUri(context, uri, BackupRestoreMode.MERGE)
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = IncomeGreen)
-                ) {
-                    Text("Merge (Keep Both)", fontWeight = FontWeight.Bold)
-                }
+                ) { Text("Merge", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 OutlinedButton(
@@ -610,16 +541,14 @@ fun BackupSyncScreen(
                         showRestoreModeDialog = null
                         viewModel.restoreFromFileUri(context, uri, BackupRestoreMode.REPLACE)
                     }
-                ) {
-                    Text("Replace All")
-                }
+                ) { Text("Replace All") }
             },
             containerColor = CardBackground,
             shape = RoundedCornerShape(20.dp)
         )
     }
 
-    // ── Frequency picker dialog ───────────────────────────────────────────────
+    // Frequency picker
     if (showFrequencyPicker) {
         AlertDialog(
             onDismissRequest = { showFrequencyPicker = false },
@@ -631,8 +560,14 @@ fun BackupSyncScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(if (status.frequency == freq) Color(0xFF1A2E1A) else CardBackgroundElevated)
-                                .border(1.dp, if (status.frequency == freq) IncomeGreen else CardBorderSubtle, RoundedCornerShape(10.dp))
+                                .background(
+                                    if (status.frequency == freq) Color(0xFF1A2E1A) else CardBackgroundElevated
+                                )
+                                .border(
+                                    1.dp,
+                                    if (status.frequency == freq) IncomeGreen else CardBorderSubtle,
+                                    RoundedCornerShape(10.dp)
+                                )
                                 .clickable {
                                     viewModel.setBackupFrequency(freq)
                                     showFrequencyPicker = false
@@ -641,8 +576,11 @@ fun BackupSyncScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(freq.label, color = if (status.frequency == freq) IncomeGreen else TextPrimary,
-                                fontWeight = if (status.frequency == freq) FontWeight.Bold else FontWeight.Normal)
+                            Text(
+                                freq.label,
+                                color = if (status.frequency == freq) IncomeGreen else TextPrimary,
+                                fontWeight = if (status.frequency == freq) FontWeight.Bold else FontWeight.Normal
+                            )
                             if (status.frequency == freq) {
                                 Icon(Icons.Default.Check, null, tint = IncomeGreen, modifier = Modifier.size(16.dp))
                             }
@@ -659,12 +597,17 @@ fun BackupSyncScreen(
         )
     }
 
-    // ── Disconnect confirmation ───────────────────────────────────────────────
+    // Disconnect confirmation
     if (showDisconnectConfirm) {
         AlertDialog(
             onDismissRequest = { showDisconnectConfirm = false },
             title = { Text("Disconnect Account?", fontWeight = FontWeight.Bold, color = TextPrimary) },
-            text = { Text("Automatic backup will stop. Your local Money Minder data will not be affected. Your existing backups in your email will remain intact.", color = TextSecondary) },
+            text = {
+                Text(
+                    "Automatic backup will stop. Your local data and existing email backups are not affected.",
+                    color = TextSecondary
+                )
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -682,12 +625,17 @@ fun BackupSyncScreen(
         )
     }
 
-    // ── Delete all backups confirmation ───────────────────────────────────────
+    // Delete all backups confirmation
     if (showDeleteAllConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteAllConfirm = false },
-            title = { Text("Delete All Cloud Backups?", fontWeight = FontWeight.Bold, color = ExpenseRed) },
-            text = { Text("This will permanently delete all Money Minder backup emails from your email inbox. Your local app data will not be affected. This action cannot be undone.", color = TextSecondary) },
+            title = { Text("Delete All Backups?", fontWeight = FontWeight.Bold, color = ExpenseRed) },
+            text = {
+                Text(
+                    "This permanently deletes all Money Minder backup emails from your inbox. Local data is not affected.",
+                    color = TextSecondary
+                )
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -707,7 +655,7 @@ fun BackupSyncScreen(
     }
 }
 
-// ── Shared sub-components ─────────────────────────────────────────────────────
+// Shared sub-components
 
 @Composable
 fun BackupSectionHeader(title: String) {
@@ -722,7 +670,10 @@ fun BackupSectionHeader(title: String) {
 @Composable
 fun BackupIconCircle(icon: ImageVector, tint: Color) {
     Box(
-        modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFF1C1C26)),
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(Color(0xFF1C1C26)),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
@@ -743,13 +694,17 @@ fun BackupInfoCard(icon: ImageVector, iconTint: Color, title: String, subtitle: 
             BackupIconCircle(icon, iconTint)
             Spacer(Modifier.width(12.dp))
             Column {
-                Text(title,
+                Text(
+                    title,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.SemiBold, color = TextPrimary, fontSize = 14.sp
                     )
                 )
-                Text(subtitle,
-                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary, fontSize = 11.sp),
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = TextSecondary, fontSize = 11.sp
+                    ),
                     lineHeight = 16.sp
                 )
             }
@@ -780,14 +735,16 @@ fun BackupActionCard(
             BackupIconCircle(icon, if (enabled) iconTint else TextDisabled)
             Spacer(Modifier.width(12.dp))
             Column {
-                Text(title,
+                Text(
+                    title,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.SemiBold,
                         color = if (enabled) textColor else TextDisabled,
                         fontSize = 14.sp
                     )
                 )
-                Text(subtitle,
+                Text(
+                    subtitle,
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = if (enabled) TextSecondary else TextDisabled,
                         fontSize = 11.sp
