@@ -86,9 +86,7 @@ dependencies {
   androidTestImplementation(libs.androidx.test.runner)
   androidTestImplementation(libs.androidx.test.espresso.core)
 
-  // Backup & Sync
+  // Backup & Sync (Google Drive)
   implementation("androidx.work:work-runtime-ktx:2.9.1")
   implementation("androidx.security:security-crypto:1.0.0")
-  implementation("com.sun.mail:android-mail:1.6.7")
-  implementation("com.sun.mail:android-activation:1.6.7")
 }

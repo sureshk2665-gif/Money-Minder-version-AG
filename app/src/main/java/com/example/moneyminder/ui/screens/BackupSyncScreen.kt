@@ -432,7 +432,7 @@ fun BackupSyncScreen(
                                             )
                                         )
                                         Text(
-                                            if (status.hasClientId) "Enable cloud backup & sync to your Gmail"
+                                            if (status.hasClientId) "Enable cloud backup & sync to Google Drive"
                                             else "Set up Client ID first (above)",
                                             style = MaterialTheme.typography.bodySmall.copy(
                                                 color = if (status.hasClientId) TextSecondary else TextDisabled,
@@ -455,7 +455,7 @@ fun BackupSyncScreen(
                                 icon = Icons.Default.CloudUpload,
                                 iconTint = IncomeGreen,
                                 title = "Backup Now",
-                                subtitle = "Upload backup to your Gmail inbox",
+                                subtitle = "Upload backup to Google Drive",
                                 onClick = { viewModel.backupNow() }
                             )
                             Spacer(Modifier.height(8.dp))
@@ -500,7 +500,7 @@ fun BackupSyncScreen(
                             icon = Icons.Default.FolderOpen,
                             iconTint = BankAccent,
                             title = "Restore from File",
-                            subtitle = "Pick .mmbackup file from Downloads or Gmail",
+                            subtitle = "Pick .mmbackup file from Downloads",
                             onClick = { filePickerLauncher.launch("*/*") }
                         )
 
@@ -510,7 +510,7 @@ fun BackupSyncScreen(
                                 icon = Icons.Default.History,
                                 iconTint = TransferBlueGrey,
                                 title = "Backup History",
-                                subtitle = "Browse and restore from your Gmail backups",
+                                subtitle = "Browse and restore from Google Drive backups",
                                 onClick = {
                                     viewModel.loadBackupHistory()
                                     onViewHistory()
@@ -616,7 +616,7 @@ fun BackupSyncScreen(
                                 icon = Icons.Default.Delete,
                                 iconTint = ExpenseRed,
                                 title = "Delete Cloud Backups",
-                                subtitle = "Remove all backup emails from inbox",
+                                subtitle = "Remove all backups from Google Drive",
                                 textColor = ExpenseRed,
                                 onClick = { showDeleteAllConfirm = true }
                             )
@@ -719,7 +719,7 @@ fun BackupSyncScreen(
             title = { Text("Disconnect Account?", fontWeight = FontWeight.Bold, color = TextPrimary) },
             text = {
                 Text(
-                    "Automatic backup will stop. Your local data and existing email backups are not affected.",
+                    "Automatic backup will stop. Your local data and existing Drive backups are not affected.",
                     color = TextSecondary
                 )
             },
@@ -747,7 +747,7 @@ fun BackupSyncScreen(
             title = { Text("Delete All Backups?", fontWeight = FontWeight.Bold, color = ExpenseRed) },
             text = {
                 Text(
-                    "This permanently deletes all Money Minder backup emails from your inbox. Local data is not affected.",
+                    "This permanently deletes all Money Minder backup files from Google Drive. Local data is not affected.",
                     color = TextSecondary
                 )
             },
@@ -781,11 +781,11 @@ fun BackupSyncScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        "To use Gmail backup, you need a Google OAuth Client ID from Google Cloud Console.",
+                        "To use Google Drive backup, you need an OAuth Client ID from Google Cloud Console.",
                         color = TextSecondary, fontSize = 13.sp, lineHeight = 18.sp
                     )
                     Text(
-                        "Steps:\n1. Go to console.cloud.google.com\n2. Create a project & enable Gmail API\n3. Go to Credentials > Create OAuth Client ID\n4. Choose \"Desktop app\" type\n5. Paste the Client ID below",
+                        "Steps:\n1. Go to console.cloud.google.com\n2. Create a project & enable Google Drive API\n3. Go to Credentials > Create OAuth Client ID\n4. Choose \"Desktop app\" type\n5. Paste the Client ID below",
                         color = TextMuted, fontSize = 12.sp, lineHeight = 17.sp
                     )
                     OutlinedTextField(

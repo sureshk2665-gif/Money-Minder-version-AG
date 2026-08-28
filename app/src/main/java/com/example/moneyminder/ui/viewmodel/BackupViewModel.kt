@@ -128,82 +128,11 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    // ── Direct Email Connection (Email + Password) ────────────────────────────
-
-    fun connectDirectEmail(
-        email: String,
-        password: String = "",
-        onSuccess: () -> Unit = {},
-        onError: (String) -> Unit = {}
-    ) {
-        val cleanEmail = email.trim()
-        if (cleanEmail.isEmpty() || !cleanEmail.contains("@")) {
-            val msg = "Please enter a valid email address."
-            setOperationStatus(BackupOperationStatus.FAILED, msg)
-            toast(msg)
-            onError(msg)
-            return
-        }
-
-        if (password.isBlank()) {
-            // Instant connect: save email for 1-Tap Gmail backups
-            prefs.connectedEmail = cleanEmail
-            prefs.appPassword = ""
-            prefs.isConnected = true
-            _backupStatus.update { buildStatusFromPrefs() }
-            setOperationStatus(BackupOperationStatus.SUCCESS, "Email saved: $cleanEmail ✓")
-            toast("Email saved: $cleanEmail")
-            onSuccess()
-            return
-        }
-
-        // Direct SMTP/IMAP verification if password is provided
-        viewModelScope.launch {
-            setOperationStatus(BackupOperationStatus.IN_PROGRESS, "Verifying credentials…", 0.3f)
-            val isGmail = cleanEmail.endsWith("@gmail.com", ignoreCase = true)
-            val smtpHost = if (isGmail) "smtp.gmail.com" else prefs.smtpHost
-            val imapHost = if (isGmail) "imap.gmail.com" else prefs.imapHost
-
-            val result = repository.testDirectConnection(
-                email = cleanEmail,
-                pass = password.trim(),
-                smtpHost = smtpHost,
-                smtpPort = 465,
-                imapHost = imapHost,
-                imapPort = 993
-            )
-            result.fold(
-                onSuccess = {
-                    prefs.connectedEmail = cleanEmail
-                    prefs.appPassword = password.trim()
-                    prefs.isConnected = true
-                    _backupStatus.update { buildStatusFromPrefs() }
-                    setOperationStatus(BackupOperationStatus.SUCCESS, "Connected to $cleanEmail ✓")
-                    toast("Connected to $cleanEmail!")
-                    onSuccess()
-                },
-                onFailure = { error ->
-                    val rawMsg = error.message ?: "Authentication failed"
-                    val userFriendlyMsg = if (rawMsg.contains("Application-specific password required") || rawMsg.contains("185833")) {
-                        "Gmail requires a 16-letter App Password (myaccount.google.com/apppasswords). Or leave password blank to use 1-Tap Gmail Backup!"
-                    } else {
-                        rawMsg
-                    }
-                    setOperationStatus(BackupOperationStatus.FAILED, userFriendlyMsg)
-                    toast(userFriendlyMsg)
-                    onError(userFriendlyMsg)
-                }
-            )
-        }
-    }
-
-
     // ── Disconnect account ────────────────────────────────────────────────────
 
     fun disconnectAccount() {
         prefs.oauthAccessToken = ""
         prefs.refreshToken = ""
-        prefs.appPassword = ""
         prefs.oauthCodeVerifier = ""
         prefs.connectedEmail = ""
         prefs.connectedName = ""
@@ -239,8 +168,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
     // ── Backup Now ────────────────────────────────────────────────────────────
 
     /**
-     * Share backup directly via Android's native email / Gmail app.
-     * Guaranteed to work 100% with zero authentication errors or cloud setup.
+     * Share backup file via Android's share sheet (email, messaging apps, etc.).
      */
     fun shareBackupViaEmail(ctx: Context) {
         viewModelScope.launch {
@@ -302,7 +230,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                     operationMessage = "Backup ready to send ✓",
                     operationProgress = 1f
                 )}
-                toast("Backup created — choose Gmail to send to your inbox")
+                toast("Backup created — choose an app to share")
             } catch (e: Exception) {
                 setOperationStatus(BackupOperationStatus.FAILED, "Error: ${e.message}")
                 toast("Could not create backup: ${e.message}")
@@ -348,7 +276,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
     fun backupNow() {
         viewModelScope.launch {
             if (!prefs.isConnected) {
-                toast("Connect your email account first")
+                toast("Connect your Google account first")
                 return@launch
             }
             setOperationStatus(BackupOperationStatus.IN_PROGRESS, "Preparing backup…", 0.1f)
@@ -434,9 +362,9 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
 
     fun deleteBackup(meta: BackupMetadata) {
         viewModelScope.launch {
-            val deleted = withContext(Dispatchers.IO) { repository.deleteBackup(meta.gmailMessageId) }
+            val deleted = withContext(Dispatchers.IO) { repository.deleteBackup(meta.driveFileId) }
             if (deleted) {
-                _backupHistory.update { it.filter { b -> b.gmailMessageId != meta.gmailMessageId } }
+                _backupHistory.update { it.filter { b -> b.driveFileId != meta.driveFileId } }
                 toast("Backup deleted")
             } else {
                 toast("Could not delete backup. Please try again.")
@@ -455,7 +383,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
     fun previewMerge(meta: BackupMetadata) {
         viewModelScope.launch {
             setOperationStatus(BackupOperationStatus.IN_PROGRESS, "Analysing backup…")
-            val downloadResult = withContext(Dispatchers.IO) { repository.downloadBackup(meta.gmailMessageId) }
+            val downloadResult = withContext(Dispatchers.IO) { repository.downloadBackup(meta.driveFileId) }
             when (downloadResult) {
                 is UnifiedBackupRepository.RestoreResult.Success -> {
                     val parseResult = BackupSerializer.fromJson(downloadResult.content)
@@ -499,7 +427,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
     fun performRestore(meta: BackupMetadata, mode: BackupRestoreMode) {
         viewModelScope.launch {
             setOperationStatus(BackupOperationStatus.IN_PROGRESS, "Downloading backup…", 0.1f)
-            val downloadResult = withContext(Dispatchers.IO) { repository.downloadBackup(meta.gmailMessageId) }
+            val downloadResult = withContext(Dispatchers.IO) { repository.downloadBackup(meta.driveFileId) }
             when (downloadResult) {
                 is UnifiedBackupRepository.RestoreResult.Success -> {
                     val parseResult = BackupSerializer.fromJson(downloadResult.content)

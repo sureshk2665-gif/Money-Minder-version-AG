@@ -179,7 +179,7 @@ fun RestoreBackupScreen(
                                     items(history) { meta ->
                                         val dateStr = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
                                             .format(Date(meta.createdAt))
-                                        val isSelected = selected?.gmailMessageId == meta.gmailMessageId
+                                        val isSelected = selected?.driveFileId == meta.driveFileId
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxWidth()
