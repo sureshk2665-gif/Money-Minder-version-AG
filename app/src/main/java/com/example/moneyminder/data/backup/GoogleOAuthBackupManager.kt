@@ -1,6 +1,5 @@
 package com.example.moneyminder.data.backup
 
-import android.util.Base64
 import com.example.moneyminder.data.model.BackupMetadata
 import com.example.moneyminder.data.model.BackupType
 import com.example.moneyminder.data.model.MoneyMinderBackupFile
@@ -11,30 +10,30 @@ import org.json.JSONObject
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /**
- * Gmail REST API client for backup storage authenticated via Google OAuth 2.0.
+ * Google Drive REST API client for backup storage authenticated via Google OAuth 2.0.
  *
- * Direct HTTPS communication with Gmail API:
- * - Uploads `.mmbackup` JSON backup files directly to the user's Gmail mailbox.
- * - Lists, restores, and deletes backups without third-party cloud servers.
- * - Automatically refreshes expired OAuth tokens in the background.
+ * Stores `.mmbackup` JSON backup files in a "MoneyMinder Backups" folder
+ * on the user's Google Drive. Automatically refreshes expired OAuth tokens.
  */
 class GoogleOAuthBackupManager(
     private val prefs: BackupPreferences
 ) {
 
     companion object {
-        const val BACKUP_SUBJECT_PREFIX = "[MoneyMinderBackup]"
-        const val GMAIL_API_BASE = "https://gmail.googleapis.com/gmail/v1/users/me"
+        const val DRIVE_API_BASE = "https://www.googleapis.com/drive/v3"
+        const val DRIVE_UPLOAD_BASE = "https://www.googleapis.com/upload/drive/v3"
+        const val BACKUP_FOLDER_NAME = "MoneyMinder Backups"
         const val BACKUP_FILE_EXTENSION = ".mmbackup"
     }
 
     sealed class BackupResult {
-        data class Success(val gmailMessageId: String, val sizeBytes: Long) : BackupResult()
+        data class Success(val driveFileId: String, val sizeBytes: Long) : BackupResult()
         data class Failure(val message: String) : BackupResult()
     }
 
@@ -43,15 +42,53 @@ class GoogleOAuthBackupManager(
         data class Failure(val message: String) : RestoreResult()
     }
 
-    // ── Token Management with Auto-Refresh ────────────────────────────────────
-
     private suspend fun getValidAccessToken(): String? {
         val currentToken = prefs.oauthAccessToken
         if (currentToken.isNotBlank()) return currentToken
-
-        // Attempt refresh
         val refreshRes = GoogleOAuthManager.refreshAccessToken(prefs)
         return refreshRes.getOrNull()
+    }
+
+    private fun getOrCreateFolder(token: String): String? {
+        val query = "name='$BACKUP_FOLDER_NAME' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        val searchUrl = URL("$DRIVE_API_BASE/files?q=${URLEncoder.encode(query, "UTF-8")}&fields=files(id)&spaces=drive")
+        val conn = (searchUrl.openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            setRequestProperty("Authorization", "Bearer $token")
+            connectTimeout = 15000
+            readTimeout = 15000
+        }
+
+        if (conn.responseCode == 200) {
+            val json = JSONObject(conn.inputStream.bufferedReader().readText())
+            val files = json.optJSONArray("files")
+            if (files != null && files.length() > 0) {
+                return files.getJSONObject(0).getString("id")
+            }
+        }
+
+        val createUrl = URL("$DRIVE_API_BASE/files")
+        val createConn = (createUrl.openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput = true
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("Content-Type", "application/json")
+            connectTimeout = 15000
+            readTimeout = 15000
+        }
+
+        val folderMeta = JSONObject().apply {
+            put("name", BACKUP_FOLDER_NAME)
+            put("mimeType", "application/vnd.google-apps.folder")
+        }
+
+        OutputStreamWriter(createConn.outputStream).use { it.write(folderMeta.toString()) }
+
+        return if (createConn.responseCode in 200..201) {
+            JSONObject(createConn.inputStream.bufferedReader().readText()).getString("id")
+        } else {
+            null
+        }
     }
 
     // ── Upload Backup ─────────────────────────────────────────────────────────
@@ -65,95 +102,80 @@ class GoogleOAuthBackupManager(
             ?: return@withContext BackupResult.Failure("Not signed in. Please connect your Google account.")
 
         try {
-            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.US)
+            val folderId = getOrCreateFolder(token)
+                ?: return@withContext BackupResult.Failure("Could not create backup folder in Google Drive")
+
+            val sdf = SimpleDateFormat("yyyy-MM-dd_HHmm", Locale.US)
             val dateLabel = sdf.format(Date(backupFile.createdAt))
             val typeLabel = if (isAutomatic) "AUTO" else "MANUAL"
-            val balLabel = "bal:${f(backupFile.bankBalanceSnapshot)}:${f(backupFile.walletBalanceSnapshot)}:${f(backupFile.cashBalanceSnapshot)}"
-            val subject = "$BACKUP_SUBJECT_PREFIX $dateLabel | ${backupFile.transactionCount} tx | v${backupFile.version} | $typeLabel | bid:${backupFile.backupId} | $balLabel"
+            val fileName = "MoneyMinder_${dateLabel}_${backupFile.backupId}$BACKUP_FILE_EXTENSION"
 
-            val boundary = "===moneyminder_backup_boundary==="
-            val fileName = "moneyminder_backup_${backupFile.backupId}$BACKUP_FILE_EXTENSION"
-            val jsonBase64 = Base64.encodeToString(backupJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-            val toEmail = prefs.connectedEmail.ifBlank { "me" }
-
-            val rawEmail = buildString {
-                appendLine("From: $toEmail")
-                appendLine("To: $toEmail")
-                appendLine("Subject: $subject")
-                appendLine("MIME-Version: 1.0")
-                appendLine("Content-Type: multipart/mixed; boundary=\"$boundary\"")
-                appendLine()
-                appendLine("--$boundary")
-                appendLine("Content-Type: text/plain; charset=UTF-8")
-                appendLine()
-                appendLine("Money Minder Backup")
-                appendLine("Date: $dateLabel")
-                appendLine("Type: $typeLabel")
-                appendLine("Transactions: ${backupFile.transactionCount}")
-                appendLine("Backup ID: ${backupFile.backupId}")
-                appendLine("Bank Balance: ₹${f(backupFile.bankBalanceSnapshot)}")
-                appendLine("Wallet Balance: ₹${f(backupFile.walletBalanceSnapshot)}")
-                appendLine("Cash Balance: ₹${f(backupFile.cashBalanceSnapshot)}")
-                appendLine()
-                appendLine("This backup email was created by Money Minder.")
-                appendLine("Do not delete this email if you want to be able to restore your data.")
-                appendLine()
-                appendLine("--$boundary")
-                appendLine("Content-Type: application/octet-stream; name=\"$fileName\"")
-                appendLine("Content-Transfer-Encoding: base64")
-                appendLine("Content-Disposition: attachment; filename=\"$fileName\"")
-                appendLine()
-                appendLine(jsonBase64)
-                appendLine("--$boundary--")
+            val metadata = JSONObject().apply {
+                put("name", fileName)
+                put("parents", JSONArray().put(folderId))
+                put("description", "Money Minder Backup | ${backupFile.transactionCount} tx | $typeLabel")
+                put("appProperties", JSONObject().apply {
+                    put("backupId", backupFile.backupId)
+                    put("txCount", backupFile.transactionCount.toString())
+                    put("type", typeLabel)
+                    put("version", backupFile.version.toString())
+                    put("bank", f(backupFile.bankBalanceSnapshot))
+                    put("wallet", f(backupFile.walletBalanceSnapshot))
+                    put("cash", f(backupFile.cashBalanceSnapshot))
+                })
             }
 
-            val encodedEmail = Base64.encodeToString(
-                rawEmail.toByteArray(Charsets.UTF_8),
-                Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
-            )
+            val boundary = "===moneyminder_drive_boundary==="
+            val bodyBytes = buildDriveMultipart(boundary, metadata.toString(), backupJson)
 
-            val requestBody = JSONObject().put("raw", encodedEmail).toString()
-            var code = sendGmailMessage(token, requestBody)
+            val uploadUrl = URL("$DRIVE_UPLOAD_BASE/files?uploadType=multipart&fields=id,size")
+            var conn = openUploadConnection(uploadUrl, token, boundary)
+            conn.outputStream.write(bodyBytes)
 
-            // Auto-refresh token if 401 Unauthorized
-            if (code.first == 401) {
-                val refreshRes = GoogleOAuthManager.refreshAccessToken(prefs)
-                val refreshedToken = refreshRes.getOrNull()
+            if (conn.responseCode == 401) {
+                val refreshedToken = GoogleOAuthManager.refreshAccessToken(prefs).getOrNull()
                 if (refreshedToken != null) {
                     token = refreshedToken
-                    code = sendGmailMessage(token, requestBody)
+                    conn = openUploadConnection(uploadUrl, token, boundary)
+                    conn.outputStream.write(bodyBytes)
                 }
             }
 
-            if (code.first in 200..201) {
-                val sizeBytes = backupJson.toByteArray().size.toLong()
-                BackupResult.Success(backupFile.backupId, sizeBytes)
+            if (conn.responseCode in 200..201) {
+                val response = JSONObject(conn.inputStream.bufferedReader().readText())
+                val fileId = response.getString("id")
+                val sizeBytes = response.optLong("size", backupJson.toByteArray().size.toLong())
+                BackupResult.Success(fileId, sizeBytes)
             } else {
-                BackupResult.Failure("Upload failed: HTTP ${code.first} — ${code.second}")
+                val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP ${conn.responseCode}"
+                BackupResult.Failure("Upload failed: $err")
             }
         } catch (e: Exception) {
             BackupResult.Failure("Upload error: ${e.message}")
         }
     }
 
-    private fun sendGmailMessage(token: String, requestBody: String): Pair<Int, String> {
-        val url = URL("$GMAIL_API_BASE/messages/send")
-        val conn = (url.openConnection() as HttpURLConnection).apply {
+    private fun openUploadConnection(url: URL, token: String, boundary: String): HttpURLConnection {
+        return (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             doOutput = true
             setRequestProperty("Authorization", "Bearer $token")
-            setRequestProperty("Content-Type", "application/json")
-            connectTimeout = 20000
-            readTimeout = 20000
+            setRequestProperty("Content-Type", "multipart/related; boundary=$boundary")
+            connectTimeout = 30000
+            readTimeout = 30000
         }
-        OutputStreamWriter(conn.outputStream).use { it.write(requestBody) }
-        val code = conn.responseCode
-        val response = if (code in 200..299) {
-            conn.inputStream.bufferedReader().readText()
-        } else {
-            conn.errorStream?.bufferedReader()?.readText() ?: ""
-        }
-        return Pair(code, response)
+    }
+
+    private fun buildDriveMultipart(boundary: String, metadataJson: String, content: String): ByteArray {
+        return buildString {
+            append("--$boundary\r\n")
+            append("Content-Type: application/json; charset=UTF-8\r\n\r\n")
+            append(metadataJson)
+            append("\r\n--$boundary\r\n")
+            append("Content-Type: application/json\r\n\r\n")
+            append(content)
+            append("\r\n--$boundary--")
+        }.toByteArray(Charsets.UTF_8)
     }
 
     // ── List Backups ──────────────────────────────────────────────────────────
@@ -163,8 +185,13 @@ class GoogleOAuthBackupManager(
             ?: return@withContext Result.failure(Exception("Not signed in"))
 
         try {
-            val query = "subject:$BACKUP_SUBJECT_PREFIX"
-            val url = URL("$GMAIL_API_BASE/messages?q=${java.net.URLEncoder.encode(query, "UTF-8")}&maxResults=50")
+            val folderId = getOrCreateFolder(token)
+                ?: return@withContext Result.failure(Exception("Could not access backup folder"))
+
+            val query = "'$folderId' in parents and trashed=false"
+            val fields = "files(id,name,size,createdTime,appProperties)"
+            val url = URL("$DRIVE_API_BASE/files?q=${URLEncoder.encode(query, "UTF-8")}&fields=$fields&orderBy=createdTime desc&pageSize=50")
+
             var conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 setRequestProperty("Authorization", "Bearer $token")
@@ -186,16 +213,15 @@ class GoogleOAuthBackupManager(
             }
 
             if (conn.responseCode != 200) {
-                return@withContext Result.failure(Exception("Gmail list failed: HTTP ${conn.responseCode}"))
+                return@withContext Result.failure(Exception("Drive list failed: HTTP ${conn.responseCode}"))
             }
 
             val response = conn.inputStream.bufferedReader().readText()
-            val messagesArray = JSONObject(response).optJSONArray("messages") ?: JSONArray()
+            val filesArray = JSONObject(response).optJSONArray("files") ?: JSONArray()
 
             val metadataList = mutableListOf<BackupMetadata>()
-            for (i in 0 until messagesArray.length()) {
-                val msgId = messagesArray.getJSONObject(i).getString("id")
-                val meta = fetchBackupMetadata(token, msgId)
+            for (i in 0 until filesArray.length()) {
+                val meta = parseFileMeta(filesArray.getJSONObject(i))
                 if (meta != null) metadataList.add(meta)
             }
 
@@ -206,56 +232,38 @@ class GoogleOAuthBackupManager(
         }
     }
 
-    private fun fetchBackupMetadata(token: String, messageId: String): BackupMetadata? {
+    private fun parseFileMeta(file: JSONObject): BackupMetadata? {
         return try {
-            val url = URL("$GMAIL_API_BASE/messages/$messageId?format=metadata&metadataHeaders=Subject&metadataHeaders=Date")
-            val conn = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                setRequestProperty("Authorization", "Bearer $token")
-                connectTimeout = 10000
-                readTimeout = 10000
-            }
-            if (conn.responseCode != 200) return null
+            val fileId = file.getString("id")
+            val sizeBytes = file.optLong("size", 0L)
+            val createdTime = file.optString("createdTime", "")
 
-            val json = JSONObject(conn.inputStream.bufferedReader().readText())
-            val headers = json.optJSONObject("payload")?.optJSONArray("headers") ?: JSONArray()
-            var subject = ""
-            for (i in 0 until headers.length()) {
-                val h = headers.getJSONObject(i)
-                if (h.optString("name", "").equals("Subject", ignoreCase = true)) {
-                    subject = h.optString("value", "")
-                }
+            val createdAt = try {
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).parse(createdTime)?.time ?: 0L
+            } catch (e: Exception) {
+                try {
+                    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).parse(createdTime)?.time ?: 0L
+                } catch (e2: Exception) { 0L }
             }
 
-            parseSubjectMeta(messageId, subject, json.optLong("sizeEstimate", 0L))
-        } catch (e: Exception) { null }
-    }
-
-    private fun parseSubjectMeta(messageId: String, subject: String, sizeEstimate: Long): BackupMetadata? {
-        if (!subject.startsWith(BACKUP_SUBJECT_PREFIX)) return null
-        return try {
-            val parts = subject.split("|").map { it.trim() }
-            val dateStr = parts[0].removePrefix(BACKUP_SUBJECT_PREFIX).trim()
-            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.US)
-            val createdAt = try { sdf.parse(dateStr)?.time ?: 0L } catch (e: Exception) { 0L }
-            val txCount = parts.getOrNull(1)?.removeSuffix("tx")?.trim()?.toIntOrNull() ?: 0
-            val typeStr = parts.getOrNull(3) ?: "MANUAL"
+            val props = file.optJSONObject("appProperties")
+            val backupId = props?.optString("backupId", fileId) ?: fileId
+            val txCount = props?.optString("txCount", "0")?.toIntOrNull() ?: 0
+            val typeStr = props?.optString("type", "MANUAL") ?: "MANUAL"
             val backupType = if (typeStr == "AUTO") BackupType.AUTOMATIC else BackupType.MANUAL
-            val backupId = parts.firstOrNull { it.startsWith("bid:") }?.removePrefix("bid:") ?: messageId
-            val balPart = parts.firstOrNull { it.startsWith("bal:") }?.removePrefix("bal:")
-            val balParts = balPart?.split(":") ?: emptyList()
-            val bank = balParts.getOrNull(0)?.toDoubleOrNull() ?: 0.0
-            val wallet = balParts.getOrNull(1)?.toDoubleOrNull() ?: 0.0
-            val cash = balParts.getOrNull(2)?.toDoubleOrNull() ?: 0.0
+            val version = props?.optString("version", "1")?.toIntOrNull() ?: 1
+            val bank = props?.optString("bank", "0")?.toDoubleOrNull() ?: 0.0
+            val wallet = props?.optString("wallet", "0")?.toDoubleOrNull() ?: 0.0
+            val cash = props?.optString("cash", "0")?.toDoubleOrNull() ?: 0.0
 
             BackupMetadata(
-                gmailMessageId = messageId,
+                driveFileId = fileId,
                 backupId = backupId,
                 createdAt = createdAt,
                 transactionCount = txCount,
-                sizeBytes = sizeEstimate,
+                sizeBytes = sizeBytes,
                 type = backupType,
-                version = 1,
+                version = version,
                 bankSnapshot = bank,
                 walletSnapshot = wallet,
                 cashSnapshot = cash
@@ -265,17 +273,17 @@ class GoogleOAuthBackupManager(
 
     // ── Download Backup Content ───────────────────────────────────────────────
 
-    suspend fun downloadBackup(gmailMessageId: String): RestoreResult = withContext(Dispatchers.IO) {
+    suspend fun downloadBackup(driveFileId: String): RestoreResult = withContext(Dispatchers.IO) {
         var token = getValidAccessToken()
             ?: return@withContext RestoreResult.Failure("Not signed in")
 
         try {
-            val url = URL("$GMAIL_API_BASE/messages/$gmailMessageId?format=full")
+            val url = URL("$DRIVE_API_BASE/files/$driveFileId?alt=media")
             var conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 setRequestProperty("Authorization", "Bearer $token")
                 connectTimeout = 15000
-                readTimeout = 15000
+                readTimeout = 30000
             }
 
             if (conn.responseCode == 401) {
@@ -286,7 +294,7 @@ class GoogleOAuthBackupManager(
                         requestMethod = "GET"
                         setRequestProperty("Authorization", "Bearer $token")
                         connectTimeout = 15000
-                        readTimeout = 15000
+                        readTimeout = 30000
                     }
                 }
             }
@@ -295,51 +303,22 @@ class GoogleOAuthBackupManager(
                 return@withContext RestoreResult.Failure("Download failed: HTTP ${conn.responseCode}")
             }
 
-            val messageJson = JSONObject(conn.inputStream.bufferedReader().readText())
-            val attachmentId = findAttachmentId(messageJson)
-                ?: return@withContext RestoreResult.Failure("No backup attachment (.mmbackup) found in this email")
-
-            val attUrl = URL("$GMAIL_API_BASE/messages/$gmailMessageId/attachments/$attachmentId")
-            val attConn = (attUrl.openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                setRequestProperty("Authorization", "Bearer $token")
-                connectTimeout = 15000
-                readTimeout = 15000
-            }
-            if (attConn.responseCode != 200) return@withContext RestoreResult.Failure("Could not download attachment data")
-
-            val attJson = JSONObject(attConn.inputStream.bufferedReader().readText())
-            val encodedData = attJson.getString("data")
-            val decoded = Base64.decode(encodedData.replace('-', '+').replace('_', '/'), Base64.DEFAULT)
-            RestoreResult.Success(String(decoded, Charsets.UTF_8))
+            val content = conn.inputStream.bufferedReader(Charsets.UTF_8).readText()
+            RestoreResult.Success(content)
         } catch (e: Exception) {
             RestoreResult.Failure("Download error: ${e.message}")
         }
     }
 
-    private fun findAttachmentId(messageJson: JSONObject): String? {
-        val payload = messageJson.optJSONObject("payload") ?: return null
-        val parts = payload.optJSONArray("parts") ?: return null
-        for (i in 0 until parts.length()) {
-            val part = parts.getJSONObject(i)
-            val filename = part.optString("filename", "")
-            if (filename.endsWith(BACKUP_FILE_EXTENSION) || filename.contains("backup")) {
-                return part.optJSONObject("body")?.optString("attachmentId")
-            }
-        }
-        return null
-    }
-
     // ── Delete Backup ─────────────────────────────────────────────────────────
 
-    suspend fun deleteBackup(gmailMessageId: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun deleteBackup(driveFileId: String): Boolean = withContext(Dispatchers.IO) {
         val token = getValidAccessToken() ?: return@withContext false
         try {
-            val url = URL("$GMAIL_API_BASE/messages/$gmailMessageId/trash")
+            val url = URL("$DRIVE_API_BASE/files/$driveFileId")
             val conn = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "POST"
+                requestMethod = "DELETE"
                 setRequestProperty("Authorization", "Bearer $token")
-                setRequestProperty("Content-Length", "0")
                 connectTimeout = 10000
                 readTimeout = 10000
             }

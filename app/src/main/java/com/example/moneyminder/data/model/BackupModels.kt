@@ -63,10 +63,10 @@ data class MoneyMinderBackupFile(
     val settings: BackupSettingsRecord
 )
 
-// ----- Backup Metadata (describes a remote backup in Gmail) -----
+// ----- Backup Metadata (describes a remote backup in Google Drive) -----
 
 data class BackupMetadata(
-    val gmailMessageId: String,
+    val driveFileId: String,
     val backupId: String,
     val createdAt: Long,          // epoch millis
     val transactionCount: Int,

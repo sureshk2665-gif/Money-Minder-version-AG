@@ -34,7 +34,7 @@ import java.security.SecureRandom
 object GoogleOAuthManager {
 
     const val DEFAULT_CLIENT_ID = "602264833180-877209u2k51g699g30k8q8c7b8g64e9e.apps.googleusercontent.com"
-    const val SCOPES = "https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
+    const val SCOPES = "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
 
     private var activeServerJob: Job? = null
     private var activeServerSocket: ServerSocket? = null
