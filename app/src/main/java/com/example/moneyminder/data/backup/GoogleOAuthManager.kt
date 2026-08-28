@@ -98,6 +98,7 @@ object GoogleOAuthManager {
 
             val clientId = getClientId(prefs)
             val redirectUri = "http://127.0.0.1:$port/oauth2callback"
+            prefs.oauthRedirectUri = redirectUri
 
             // Build Google authorization URL
             val authUrl = Uri.parse("https://accounts.google.com/o/oauth2/v2/auth").buildUpon()
@@ -243,13 +244,8 @@ object GoogleOAuthManager {
                 append("&code=").append(URLEncoder.encode(code, "UTF-8"))
                 append("&code_verifier=").append(URLEncoder.encode(verifier, "UTF-8"))
                 append("&grant_type=authorization_code")
-                // Note: redirect_uri for loopback matching
-                if (activeServerSocket != null) {
-                    val port = activeServerSocket?.localPort ?: 0
-                    append("&redirect_uri=").append(URLEncoder.encode("http://127.0.0.1:$port/oauth2callback", "UTF-8"))
-                } else {
-                    append("&redirect_uri=").append(URLEncoder.encode("moneyminder://oauth/callback", "UTF-8"))
-                }
+                val savedRedirectUri = prefs.oauthRedirectUri.ifBlank { "moneyminder://oauth/callback" }
+                append("&redirect_uri=").append(URLEncoder.encode(savedRedirectUri, "UTF-8"))
             }
 
             conn.outputStream.bufferedWriter(Charsets.UTF_8).use { it.write(body) }

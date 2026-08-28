@@ -491,7 +491,7 @@ fun BackupSyncScreen(
 
     // ── Dialog: Connect Email & Password ──────────────────────────────────────
     if (showDirectEmailDialog) {
-        var emailInput by remember { mutableStateOf(viewModel.prefs.connectedEmail.ifBlank { "akilask1997@gmail.com" }) }
+        var emailInput by remember { mutableStateOf(viewModel.prefs.connectedEmail.ifBlank { "" }) }
         var passwordInput by remember { mutableStateOf("") }
         var passwordVisible by remember { mutableStateOf(false) }
 

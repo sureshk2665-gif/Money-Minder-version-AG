@@ -6,11 +6,11 @@ plugins {
 
 android {
     namespace = "com.example.moneyminder"
-    compileSdk = 36
+    compileSdk = 35
     defaultConfig {
         applicationId = "com.example.moneyminder"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
     }
@@ -84,11 +84,6 @@ dependencies {
   androidTestImplementation(libs.androidx.test.ext.junit)
   androidTestImplementation(libs.androidx.test.runner)
   androidTestImplementation(libs.androidx.test.espresso.core)
-
-  // Navigation
-  implementation(libs.androidx.navigation3.ui)
-  implementation(libs.androidx.navigation3.runtime)
-  implementation(libs.androidx.lifecycle.viewmodel.navigation3)
 
   // Backup & Sync
   implementation("androidx.work:work-runtime-ktx:2.9.1")
