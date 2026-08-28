@@ -785,7 +785,7 @@ fun BackupSyncScreen(
                         color = TextSecondary, fontSize = 13.sp, lineHeight = 18.sp
                     )
                     Text(
-                        "Steps:\n1. Go to console.cloud.google.com\n2. Create a project & enable Gmail API\n3. Go to Credentials > Create OAuth Client ID\n4. Choose \"Web application\" type\n5. Paste the Client ID below",
+                        "Steps:\n1. Go to console.cloud.google.com\n2. Create a project & enable Gmail API\n3. Go to Credentials > Create OAuth Client ID\n4. Choose \"Desktop app\" type\n5. Paste the Client ID below",
                         color = TextMuted, fontSize = 12.sp, lineHeight = 17.sp
                     )
                     OutlinedTextField(
