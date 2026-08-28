@@ -62,6 +62,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setCustomClientId(clientId: String) {
         prefs.customClientId = clientId.trim()
+        _backupStatus.update { buildStatusFromPrefs() }
     }
 
     fun startOAuthInBrowser(ctx: Context) {
@@ -568,15 +569,23 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
         _backupStatus.update { it.copy(operationStatus = status, operationMessage = message, operationProgress = progress) }
     }
 
-    private fun buildStatusFromPrefs() = BackupStatus(
-        isConnected = prefs.isConnected,
-        connectedEmail = prefs.connectedEmail,
-        lastBackupAt = prefs.lastBackupAt,
-        lastBackupId = prefs.lastBackupId,
-        lastBackupSizeBytes = prefs.lastBackupSizeBytes,
-        lastBackupStatus = prefs.lastBackupStatus,
-        isAutoEnabled = prefs.isAutoBackupEnabled,
-        frequency = prefs.backupFrequency,
-        operationStatus = BackupOperationStatus.IDLE
-    )
+    fun getCustomClientId(): String = prefs.customClientId
+
+    private fun buildStatusFromPrefs(): BackupStatus {
+        val cid = GoogleOAuthManager.getClientId(prefs)
+        val isDefault = cid == GoogleOAuthManager.DEFAULT_CLIENT_ID
+        return BackupStatus(
+            isConnected = prefs.isConnected,
+            connectedEmail = prefs.connectedEmail,
+            lastBackupAt = prefs.lastBackupAt,
+            lastBackupId = prefs.lastBackupId,
+            lastBackupSizeBytes = prefs.lastBackupSizeBytes,
+            lastBackupStatus = prefs.lastBackupStatus,
+            isAutoEnabled = prefs.isAutoBackupEnabled,
+            frequency = prefs.backupFrequency,
+            operationStatus = BackupOperationStatus.IDLE,
+            hasClientId = !isDefault,
+            clientIdPreview = if (!isDefault) "${cid.take(12)}..." else ""
+        )
+    }
 }

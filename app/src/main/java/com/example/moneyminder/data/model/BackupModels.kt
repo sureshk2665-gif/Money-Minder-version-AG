@@ -91,7 +91,9 @@ data class BackupStatus(
     val frequency: BackupFrequency = BackupFrequency.WEEKLY,
     val operationStatus: BackupOperationStatus = BackupOperationStatus.IDLE,
     val operationMessage: String = "",
-    val operationProgress: Float = 0f
+    val operationProgress: Float = 0f,
+    val hasClientId: Boolean = false,
+    val clientIdPreview: String = ""
 )
 
 // ----- Restore Merge Preview -----

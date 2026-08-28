@@ -39,6 +39,9 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -48,6 +51,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -103,6 +108,7 @@ fun BackupSyncScreen(
     var showDeleteAllConfirm by remember { mutableStateOf(false) }
     var showFrequencyPicker by remember { mutableStateOf(false) }
     var showRestoreModeDialog by remember { mutableStateOf<Uri?>(null) }
+    var showClientIdDialog by remember { mutableStateOf(false) }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -237,9 +243,114 @@ fun BackupSyncScreen(
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Google Account
+                    // Google Cloud Setup
                     item {
                         Spacer(Modifier.height(4.dp))
+                        BackupSectionHeader("GOOGLE CLOUD SETUP")
+                        Spacer(Modifier.height(6.dp))
+
+                        if (!status.hasClientId) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color(0xFF1A1508))
+                                    .border(1.dp, Color(0xFF3D3510), RoundedCornerShape(16.dp))
+                                    .clickable { showClientIdDialog = true }
+                                    .padding(16.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF2D2508)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Key,
+                                            null,
+                                            tint = Color(0xFFFFB300),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            "Set up Client ID",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFFFFB300),
+                                                fontSize = 15.sp
+                                            )
+                                        )
+                                        Text(
+                                            "Required: Add your Google OAuth Client ID from Google Cloud Console",
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                color = TextSecondary, fontSize = 11.sp
+                                            ),
+                                            lineHeight = 15.sp
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(CardBackgroundElevated)
+                                    .border(1.dp, CardBorderSubtle, RoundedCornerShape(14.dp))
+                                    .padding(14.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        BackupIconCircle(Icons.Default.Key, IncomeGreen)
+                                        Spacer(Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                "Client ID Configured",
+                                                style = MaterialTheme.typography.titleMedium.copy(
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = TextPrimary,
+                                                    fontSize = 14.sp
+                                                )
+                                            )
+                                            Text(
+                                                status.clientIdPreview,
+                                                style = MaterialTheme.typography.bodySmall.copy(
+                                                    color = IncomeGreen, fontSize = 11.sp
+                                                )
+                                            )
+                                        }
+                                    }
+                                    IconButton(
+                                        onClick = { showClientIdDialog = true },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            null,
+                                            tint = TextMuted,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Google Account
+                    item {
+                        BackupSectionHeader("ACCOUNT")
+                        Spacer(Modifier.height(6.dp))
                         if (status.isConnected) {
                             Box(
                                 modifier = Modifier
@@ -290,7 +401,9 @@ fun BackupSyncScreen(
                                     .clip(RoundedCornerShape(16.dp))
                                     .background(Color(0xFF0C1826))
                                     .border(1.dp, Color(0xFF1A3048), RoundedCornerShape(16.dp))
-                                    .clickable { viewModel.startOAuthInBrowser(context) }
+                                    .clickable(enabled = status.hasClientId) {
+                                        viewModel.startOAuthInBrowser(context)
+                                    }
                                     .padding(16.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -298,13 +411,13 @@ fun BackupSyncScreen(
                                         modifier = Modifier
                                             .size(40.dp)
                                             .clip(CircleShape)
-                                            .background(Color(0xFF1A2940)),
+                                            .background(if (status.hasClientId) Color(0xFF1A2940) else Color(0xFF1C1C26)),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
                                             Icons.Default.Email,
                                             null,
-                                            tint = BankAccent,
+                                            tint = if (status.hasClientId) BankAccent else TextDisabled,
                                             modifier = Modifier.size(20.dp)
                                         )
                                     }
@@ -314,14 +427,16 @@ fun BackupSyncScreen(
                                             "Sign in with Google",
                                             style = MaterialTheme.typography.titleMedium.copy(
                                                 fontWeight = FontWeight.Bold,
-                                                color = BankAccent,
+                                                color = if (status.hasClientId) BankAccent else TextDisabled,
                                                 fontSize = 15.sp
                                             )
                                         )
                                         Text(
-                                            "Enable cloud backup & sync to your Gmail",
+                                            if (status.hasClientId) "Enable cloud backup & sync to your Gmail"
+                                            else "Set up Client ID first (above)",
                                             style = MaterialTheme.typography.bodySmall.copy(
-                                                color = TextSecondary, fontSize = 12.sp
+                                                color = if (status.hasClientId) TextSecondary else TextDisabled,
+                                                fontSize = 12.sp
                                             )
                                         )
                                     }
@@ -486,7 +601,7 @@ fun BackupSyncScreen(
                     // Account management
                     if (status.isConnected) {
                         item {
-                            BackupSectionHeader("ACCOUNT")
+                            BackupSectionHeader("MANAGE ACCOUNT")
                             Spacer(Modifier.height(6.dp))
                             BackupActionCard(
                                 icon = Icons.Default.LinkOff,
@@ -648,6 +763,64 @@ fun BackupSyncScreen(
             },
             dismissButton = {
                 OutlinedButton(onClick = { showDeleteAllConfirm = false }) { Text("Cancel") }
+            },
+            containerColor = CardBackground,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // Client ID setup dialog
+    if (showClientIdDialog) {
+        var clientIdInput by remember { mutableStateOf(viewModel.getCustomClientId()) }
+
+        AlertDialog(
+            onDismissRequest = { showClientIdDialog = false },
+            title = {
+                Text("Google OAuth Client ID", fontWeight = FontWeight.Bold, color = TextPrimary)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "To use Gmail backup, you need a Google OAuth Client ID from Google Cloud Console.",
+                        color = TextSecondary, fontSize = 13.sp, lineHeight = 18.sp
+                    )
+                    Text(
+                        "Steps:\n1. Go to console.cloud.google.com\n2. Create a project & enable Gmail API\n3. Go to Credentials > Create OAuth Client ID\n4. Choose \"Web application\" type\n5. Paste the Client ID below",
+                        color = TextMuted, fontSize = 12.sp, lineHeight = 17.sp
+                    )
+                    OutlinedTextField(
+                        value = clientIdInput,
+                        onValueChange = { clientIdInput = it },
+                        label = { Text("Client ID", color = TextMuted) },
+                        placeholder = { Text("xxxxx.apps.googleusercontent.com", color = TextDisabled, fontSize = 12.sp) },
+                        singleLine = false,
+                        maxLines = 3,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            cursorColor = BankAccent,
+                            focusedBorderColor = BankAccent,
+                            unfocusedBorderColor = CardBorder,
+                            focusedLabelColor = BankAccent,
+                            unfocusedLabelColor = TextMuted
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.setCustomClientId(clientIdInput)
+                        showClientIdDialog = false
+                    },
+                    enabled = clientIdInput.trim().contains(".apps.googleusercontent.com"),
+                    colors = ButtonDefaults.buttonColors(containerColor = IncomeGreen)
+                ) { Text("Save", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showClientIdDialog = false }) { Text("Cancel") }
             },
             containerColor = CardBackground,
             shape = RoundedCornerShape(20.dp)
