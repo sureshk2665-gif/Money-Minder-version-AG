@@ -77,9 +77,6 @@ import com.example.moneyminder.theme.WalletAccent
 @Composable
 fun SettingsScreen(
     viewModel: MainViewModel,
-    backupConnectedEmail: String = "",
-    backupLastBackupAt: Long = 0L,
-    backupIsAutoEnabled: Boolean = false,
     onExportExcel: () -> Unit,
     onExportPdf: () -> Unit,
     onOpenBackupSync: () -> Unit,
@@ -204,13 +201,12 @@ fun SettingsScreen(
                     item {
                         SettingsSectionHeader("BACKUP & SYNC")
                         Spacer(modifier = Modifier.height(8.dp))
-                        // Status summary card
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(CardBackgroundElevated)
-                                .border(1.dp, if (backupConnectedEmail.isNotBlank()) Color(0xFF1E4A2A) else CardBorderSubtle, RoundedCornerShape(16.dp))
+                                .border(1.dp, Color(0xFF1E4A2A), RoundedCornerShape(16.dp))
                                 .clickable { onOpenBackupSync() }
                                 .padding(14.dp)
                         ) {
@@ -222,45 +218,41 @@ fun SettingsScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Box(
                                         modifier = Modifier.size(36.dp).clip(CircleShape)
-                                            .background(if (backupConnectedEmail.isNotBlank()) Color(0xFF0D2211) else Color(0xFF1C1C26)),
+                                            .background(Color(0xFF0D2211)),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
                                             Icons.Default.Backup,
                                             contentDescription = null,
-                                            tint = if (backupConnectedEmail.isNotBlank()) IncomeGreen else TextMuted,
+                                            tint = IncomeGreen,
                                             modifier = Modifier.size(18.dp)
                                         )
                                     }
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
                                         Text(
-                                            text = "Backup & Sync",
+                                            text = "Backup",
                                             style = MaterialTheme.typography.titleMedium.copy(
                                                 fontWeight = FontWeight.SemiBold, color = TextPrimary, fontSize = 14.sp
                                             )
                                         )
                                         Text(
-                                            text = if (backupConnectedEmail.isNotBlank())
-                                                backupConnectedEmail
-                                            else
-                                                "No account connected",
+                                            text = "3x Daily Auto Backup",
                                             style = MaterialTheme.typography.bodySmall.copy(
-                                                color = if (backupConnectedEmail.isNotBlank()) IncomeGreen else TextMuted,
-                                                fontSize = 11.5.sp
+                                                color = IncomeGreen, fontSize = 11.5.sp
                                             )
                                         )
                                     }
                                 }
                                 Box(
                                     modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                                        .background(if (backupConnectedEmail.isNotBlank()) Color(0xFF1A3A1A) else Color(0xFF1E1E28))
+                                        .background(Color(0xFF1A3A1A))
                                         .padding(horizontal = 8.dp, vertical = 4.dp)
                                 ) {
                                     Text(
-                                        text = if (backupIsAutoEnabled) "AUTO ON" else if (backupConnectedEmail.isNotBlank()) "Manual" else "Off",
+                                        text = "AUTO ON",
                                         style = MaterialTheme.typography.labelSmall.copy(
-                                            color = if (backupIsAutoEnabled) IncomeGreen else TextMuted,
+                                            color = IncomeGreen,
                                             fontSize = 10.sp, fontWeight = FontWeight.Bold
                                         )
                                     )

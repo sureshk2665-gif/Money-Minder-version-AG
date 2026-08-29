@@ -80,6 +80,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _prefilledTransaction = MutableStateFlow<TransactionEntity?>(null)
     val prefilledTransaction: StateFlow<TransactionEntity?> = _prefilledTransaction.asStateFlow()
 
+    // Pending transaction type from quick actions (Expense/Income/Transfer)
+    private val _pendingTransactionType = MutableStateFlow<TransactionType?>(null)
+    val pendingTransactionType: StateFlow<TransactionType?> = _pendingTransactionType.asStateFlow()
+
     // Import Items Preview
     private val _importItems = MutableStateFlow<List<ImportItem>>(emptyList())
     val importItems: StateFlow<List<ImportItem>> = _importItems.asStateFlow()
@@ -124,6 +128,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setSelectedTab(tab: Int) {
         _selectedTab.value = tab
+    }
+
+    fun setPendingTransactionType(type: TransactionType) {
+        _pendingTransactionType.value = type
+    }
+
+    fun clearPendingTransactionType() {
+        _pendingTransactionType.value = null
     }
 
     fun setSelectedYearMonth(year: Int, month: Int) {

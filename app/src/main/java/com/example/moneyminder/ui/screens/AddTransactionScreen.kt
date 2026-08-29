@@ -102,7 +102,7 @@ fun AddTransactionScreen(
     var amountText by remember { mutableStateOf("") }
     var categoryText by remember { mutableStateOf("") }
     var fromAccount by remember { mutableStateOf(AccountType.BANK) }
-    var toAccount by remember { mutableStateOf(AccountType.WALLET) }
+    var toAccount by remember { mutableStateOf(AccountType.BANK) }
     var timestamp by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var noteText by remember { mutableStateOf("") }
     var referenceNumber by remember { mutableStateOf<String?>(null) }
@@ -114,6 +114,15 @@ fun AddTransactionScreen(
 
     var savedCategories by remember { mutableStateOf<List<CategoryEntity>>(emptyList()) }
 
+    // Apply pending transaction type from quick actions
+    val pendingType by viewModel.pendingTransactionType.collectAsState()
+    LaunchedEffect(pendingType) {
+        pendingType?.let { type ->
+            selectedType = type
+            viewModel.clearPendingTransactionType()
+        }
+    }
+
     // Load pre-filled transaction if available
     LaunchedEffect(prefilledTx) {
         prefilledTx?.let { tx ->
@@ -122,9 +131,29 @@ fun AddTransactionScreen(
             categoryText = tx.category
             if (tx.fromAccount != null) fromAccount = tx.fromAccount
             if (tx.toAccount != null) toAccount = tx.toAccount
+            if (tx.type == TransactionType.INCOME && toAccount == AccountType.WALLET) {
+                toAccount = AccountType.BANK
+            }
             timestamp = tx.timestamp
             noteText = tx.note
             referenceNumber = tx.referenceNumber
+        }
+    }
+
+    fun getAllowedTransferDestinations(from: AccountType): List<AccountType> = when (from) {
+        AccountType.BANK -> listOf(AccountType.WALLET, AccountType.CASH)
+        AccountType.WALLET -> listOf(AccountType.BANK)
+        AccountType.CASH -> listOf(AccountType.BANK)
+        AccountType.OVERALL -> emptyList()
+    }
+
+    // Auto-correct transfer destination when source changes
+    LaunchedEffect(fromAccount, selectedType) {
+        if (selectedType == TransactionType.TRANSFER) {
+            val allowed = getAllowedTransferDestinations(fromAccount)
+            if (toAccount !in allowed) {
+                toAccount = allowed.firstOrNull() ?: AccountType.BANK
+            }
         }
     }
 
@@ -161,6 +190,14 @@ fun AddTransactionScreen(
         } else {
             if (categoryText.isBlank()) {
                 errorMessage = "Please enter or select a category"
+                return
+            }
+        }
+
+        if (selectedType != TransactionType.INCOME) {
+            val available = balances.getBalance(fromAccount)
+            if (amount > available) {
+                errorMessage = "Insufficient balance in ${fromAccount.displayName}. Available: ${CurrencyFormatter.format(available)}"
                 return
             }
         }
@@ -455,7 +492,8 @@ fun AddTransactionScreen(
                                 )
                                 AccountSelectorRow(
                                     selected = toAccount,
-                                    onSelect = { toAccount = it }
+                                    onSelect = { toAccount = it },
+                                    accounts = listOf(AccountType.BANK, AccountType.CASH)
                                 )
                             }
                             TransactionType.TRANSFER -> {
@@ -498,7 +536,8 @@ fun AddTransactionScreen(
                                     )
                                     AccountSelectorRow(
                                         selected = toAccount,
-                                        onSelect = { toAccount = it }
+                                        onSelect = { toAccount = it },
+                                        accounts = getAllowedTransferDestinations(fromAccount)
                                     )
                                 }
                             }
@@ -803,13 +842,14 @@ private fun SegmentedTabItem(
 private fun AccountSelectorRow(
     selected: AccountType,
     onSelect: (AccountType) -> Unit,
+    accounts: List<AccountType> = AccountType.primaryAccounts,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        AccountType.primaryAccounts.forEach { acc ->
+        accounts.forEach { acc ->
             val isSelected = selected == acc
             val icon = when (acc) {
                 AccountType.BANK -> Icons.Default.AccountBalance

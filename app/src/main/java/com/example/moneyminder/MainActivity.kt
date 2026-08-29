@@ -76,9 +76,7 @@ import com.example.moneyminder.ui.screens.SplashScreen
 import com.example.moneyminder.ui.screens.TransactionDetailDialog
 import com.example.moneyminder.ui.screens.WelcomeScreen
 import com.example.moneyminder.ui.viewmodel.MainViewModel
-import com.example.moneyminder.ui.screens.BackupHistoryScreen
 import com.example.moneyminder.ui.screens.BackupSyncScreen
-import com.example.moneyminder.ui.screens.RestoreBackupScreen
 import com.example.moneyminder.ui.viewmodel.BackupViewModel
 import java.io.File
 
@@ -95,13 +93,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        // Handle OAuth deep link if cold-started from browser redirect
-        intent?.data?.let { uri ->
-            if (uri.scheme == "moneyminder" || uri.scheme == "com.example.moneyminder") {
-                backupViewModel.handleOAuthCallback(uri)
-            }
-        }
 
         val prefs = getSharedPreferences("money_minder_prefs", Context.MODE_PRIVATE)
         val isFirstLaunch = prefs.getBoolean("is_first_launch", true)
@@ -142,11 +133,6 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        intent.data?.let { uri ->
-            if (uri.scheme == "moneyminder" || uri.scheme == "com.example.moneyminder") {
-                backupViewModel.handleOAuthCallback(uri)
-            }
-        }
     }
 }
 
@@ -167,8 +153,6 @@ fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
     val backupToastMessage by backupViewModel.toastMessage.collectAsState()
     val restoreComplete by backupViewModel.restoreComplete.collectAsState()
     var showBackupSync by remember { mutableStateOf(false) }
-    var showBackupHistory by remember { mutableStateOf(false) }
-    var showRestoreBackup by remember { mutableStateOf(false) }
 
     var showExportDialog by remember { mutableStateOf(false) }
 
@@ -202,10 +186,9 @@ fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
     LaunchedEffect(restoreComplete) {
         if (restoreComplete) {
             viewModel.refreshAllData()
-            showRestoreBackup = false
-            showBackupHistory = false
             showBackupSync = false
             viewModel.setSelectedTab(0)
+            backupViewModel.acknowledgeRestore()
         }
     }
 
@@ -253,6 +236,7 @@ fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
                     0 -> HomeScreen(
                         viewModel = viewModel,
                         onNavigateToAdd = { type ->
+                            viewModel.setPendingTransactionType(type)
                             viewModel.setSelectedTab(2)
                         },
                         onOpenExport = { showExportDialog = true }
@@ -330,9 +314,6 @@ fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
     if (showSettings) {
         SettingsScreen(
             viewModel = viewModel,
-            backupConnectedEmail = backupStatus.connectedEmail,
-            backupLastBackupAt = backupStatus.lastBackupAt,
-            backupIsAutoEnabled = backupStatus.isAutoEnabled,
             onExportExcel = {
                 val file = viewModel.exportReport(isPdf = false)
                 shareExportedFile(file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -350,35 +331,7 @@ fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
     if (showBackupSync) {
         BackupSyncScreen(
             viewModel = backupViewModel,
-            onViewHistory = { showBackupHistory = true },
-            onRestoreBackup = { showRestoreBackup = true },
             onDismiss = { showBackupSync = false }
-        )
-    }
-
-    // 6c. Backup History Screen
-    if (showBackupHistory) {
-        BackupHistoryScreen(
-            viewModel = backupViewModel,
-            onRestoreSelected = { meta ->
-                backupViewModel.selectBackupForRestore(meta)
-                showRestoreBackup = true
-            },
-            onDismiss = { showBackupHistory = false }
-        )
-    }
-
-    // 6d. Restore Backup Screen
-    if (showRestoreBackup) {
-        RestoreBackupScreen(
-            viewModel = backupViewModel,
-            onComplete = {
-                showRestoreBackup = false
-                showBackupHistory = false
-                showBackupSync = false
-                viewModel.setShowSettings(false)
-            },
-            onDismiss = { showRestoreBackup = false }
         )
     }
 
