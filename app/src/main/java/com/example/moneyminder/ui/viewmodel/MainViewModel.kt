@@ -16,6 +16,7 @@ import com.example.moneyminder.data.model.CategoryEntity
 import com.example.moneyminder.data.model.CategorySpending
 import com.example.moneyminder.data.model.DaySummary
 import com.example.moneyminder.data.model.ImportItem
+import com.example.moneyminder.data.model.InboxSmsMessage
 import com.example.moneyminder.data.model.MonthlySummary
 import com.example.moneyminder.data.model.SmsCandidate
 import com.example.moneyminder.data.model.TransactionEntity
@@ -74,9 +75,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _smsCandidates = MutableStateFlow<List<SmsCandidate>>(emptyList())
     val smsCandidates: StateFlow<List<SmsCandidate>> = _smsCandidates.asStateFlow()
 
-    // SMS Inbox Sync (from device inbox)
-    private val _inboxSmsList = MutableStateFlow<List<SmsCandidate>>(emptyList())
-    val inboxSmsList: StateFlow<List<SmsCandidate>> = _inboxSmsList.asStateFlow()
+    // SMS Inbox Sync (from device inbox) — ALL messages
+    private val _inboxSmsList = MutableStateFlow<List<InboxSmsMessage>>(emptyList())
+    val inboxSmsList: StateFlow<List<InboxSmsMessage>> = _inboxSmsList.asStateFlow()
 
     private val _smsLoading = MutableStateFlow(false)
     val smsLoading: StateFlow<Boolean> = _smsLoading.asStateFlow()
@@ -339,6 +340,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun useInboxSmsToAdd(msg: InboxSmsMessage) {
+        val candidate = msg.parsedCandidate ?: return
+        useSmsCandidateToAdd(candidate)
+    }
+
     fun useSmsCandidateToAdd(candidate: SmsCandidate) {
         _prefilledTransaction.value = TransactionEntity(
             type = candidate.type,
@@ -368,23 +374,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             withContext(Dispatchers.Main) { _smsLoading.value = true }
             val context = getApplication<Application>()
-            val rawCandidates = SmsInboxReader.readFinancialSms(context, limitDays = 90)
+            val allMessages = SmsInboxReader.readAllSms(context, limitDays = 90)
 
-            val validated = rawCandidates.map { candidate ->
-                val dup = dao.findDuplicate(
-                    referenceNumber = candidate.referenceNumber,
-                    timestamp = candidate.timestamp,
-                    amount = candidate.amount,
-                    type = candidate.type,
-                    account = candidate.suggestedAccount
-                )
-                if (dup != null) {
-                    candidate.copy(
-                        isDuplicate = true,
-                        duplicateReason = if (!candidate.referenceNumber.isNullOrBlank()) "Already imported" else "Similar transaction found"
+            val validated = allMessages.map { msg ->
+                if (msg.isFinancial && msg.parsedCandidate != null) {
+                    val candidate = msg.parsedCandidate
+                    val dup = dao.findDuplicate(
+                        referenceNumber = candidate.referenceNumber,
+                        timestamp = candidate.timestamp,
+                        amount = candidate.amount,
+                        type = candidate.type,
+                        account = candidate.suggestedAccount
                     )
+                    if (dup != null) {
+                        msg.copy(
+                            isDuplicate = true,
+                            duplicateReason = if (!candidate.referenceNumber.isNullOrBlank()) "Already imported" else "Similar transaction found"
+                        )
+                    } else {
+                        msg
+                    }
                 } else {
-                    candidate
+                    msg
                 }
             }
 

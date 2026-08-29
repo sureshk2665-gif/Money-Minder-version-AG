@@ -23,15 +23,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -57,11 +59,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.example.moneyminder.data.model.InboxSmsMessage
 import com.example.moneyminder.data.model.SmsCandidate
 import com.example.moneyminder.data.model.TransactionType
+import com.example.moneyminder.theme.BackgroundDark
 import com.example.moneyminder.theme.BankAccent
 import com.example.moneyminder.theme.CardBackground
 import com.example.moneyminder.theme.CardBackgroundElevated
@@ -77,6 +82,10 @@ import com.example.moneyminder.theme.WalletAccent
 import com.example.moneyminder.ui.viewmodel.MainViewModel
 import com.example.moneyminder.util.CurrencyFormatter
 import com.example.moneyminder.util.DateTimeUtils
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun SmsReviewScreen(
@@ -90,7 +99,7 @@ fun SmsReviewScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(CardBackground)
+            .background(BackgroundDark)
     ) {
         // Header
         Row(
@@ -132,7 +141,7 @@ fun SmsReviewScreen(
         // Tab bar
         TabRow(
             selectedTabIndex = selectedTab,
-            containerColor = CardBackground,
+            containerColor = BackgroundDark,
             contentColor = TextPrimary,
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
@@ -188,164 +197,354 @@ private fun InboxSyncContent(viewModel: MainViewModel) {
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        if (!permissionGranted) {
-            // Permission request state
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+    if (!permissionGranted) {
+        // Permission request
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(CircleShape)
+                    .background(CardBackgroundElevated),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .background(CardBackgroundElevated),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Sync,
-                        contentDescription = null,
-                        tint = BankAccent,
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Text(
-                    text = "Sync SMS Inbox",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold, color = TextPrimary
-                    )
+                Icon(
+                    imageVector = Icons.Default.Sync,
+                    contentDescription = null,
+                    tint = BankAccent,
+                    modifier = Modifier.size(36.dp)
                 )
+            }
 
-                Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
+            Text(
+                text = "Sync SMS Inbox",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold, color = TextPrimary
+                )
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Money Minder will sync all your SMS messages and highlight bank transaction alerts. Tap any transaction to add it.\n\nNo data leaves your device.",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = TextSecondary, lineHeight = 18.sp
+                ),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = { permissionLauncher.launch(Manifest.permission.READ_SMS) },
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = BankAccent,
+                    contentColor = Color.White
+                ),
+                modifier = Modifier
+                    .fillMaxWidth(0.7f)
+                    .height(50.dp)
+            ) {
+                Icon(Icons.Default.Sms, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Allow SMS Access", fontWeight = FontWeight.Bold)
+            }
+        }
+    } else if (isLoading) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            CircularProgressIndicator(
+                color = BankAccent,
+                modifier = Modifier.size(40.dp),
+                strokeWidth = 3.dp
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Syncing all SMS messages...",
+                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
+            )
+        }
+    } else if (inboxSms.isEmpty()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                "No SMS found",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold, color = TextMuted
+                )
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "No messages found in the last 90 days",
+                style = MaterialTheme.typography.bodySmall.copy(color = TextDisabled),
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(20.dp))
+            OutlinedButton(
+                onClick = { viewModel.syncInboxSms() },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary)
+            ) {
+                Icon(Icons.Default.Refresh, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Refresh")
+            }
+        }
+    } else {
+        val financialCount = inboxSms.count { it.isFinancial }
+
+        // Top bar with counts and refresh
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
                 Text(
-                    text = "Money Minder can scan your SMS inbox for bank transaction alerts and list them here. Tap any message to add it as a transaction.\n\nNo data leaves your device.",
+                    "${inboxSms.size} messages synced",
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = TextSecondary, lineHeight = 18.sp
-                    ),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Button(
-                    onClick = { permissionLauncher.launch(Manifest.permission.READ_SMS) },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = BankAccent,
-                        contentColor = Color.White
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth(0.7f)
-                        .height(50.dp)
-                ) {
-                    Icon(Icons.Default.Sms, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Allow SMS Access", fontWeight = FontWeight.Bold)
-                }
-            }
-        } else if (isLoading) {
-            // Loading state
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator(
-                    color = BankAccent,
-                    modifier = Modifier.size(40.dp),
-                    strokeWidth = 3.dp
-                )
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    "Scanning inbox for transactions...",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
-                )
-            }
-        } else if (inboxSms.isEmpty()) {
-            // No transactions found
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    "No financial SMS found",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold, color = TextMuted
+                        color = TextSecondary, fontWeight = FontWeight.SemiBold
                     )
                 )
-                Spacer(Modifier.height(8.dp))
                 Text(
-                    "No bank transaction messages detected in the last 90 days",
-                    style = MaterialTheme.typography.bodySmall.copy(color = TextDisabled),
-                    textAlign = TextAlign.Center
+                    "$financialCount transaction SMS detected",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = BankAccent, fontSize = 11.sp
+                    )
                 )
-                Spacer(Modifier.height(20.dp))
-                OutlinedButton(
-                    onClick = { viewModel.syncInboxSms() },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary)
-                ) {
-                    Icon(Icons.Default.Refresh, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Refresh")
+            }
+            OutlinedButton(
+                onClick = { viewModel.syncInboxSms() },
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+                modifier = Modifier.height(34.dp)
+            ) {
+                Icon(Icons.Default.Refresh, null, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Refresh", fontSize = 12.sp)
+            }
+        }
+
+        // SMS list — grouped by date like native inbox
+        val grouped = inboxSms.groupBy { msg ->
+            getDateLabel(msg.dateMillis)
+        }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            grouped.forEach { (dateLabel, messages) ->
+                // Date header
+                item(key = "header_$dateLabel") {
+                    Text(
+                        text = dateLabel,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = TextMuted,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            letterSpacing = 0.5.sp
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(BackgroundDark)
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+
+                items(messages, key = { it.id }) { msg ->
+                    SmsInboxItem(
+                        message = msg,
+                        onClick = {
+                            if (msg.isFinancial && !msg.isDuplicate) {
+                                viewModel.useInboxSmsToAdd(msg)
+                            }
+                        }
+                    )
+                    HorizontalDivider(
+                        color = CardBorderSubtle,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(start = 72.dp)
+                    )
                 }
             }
-        } else {
-            // Results
+        }
+    }
+}
+
+@Composable
+private fun SmsInboxItem(
+    message: InboxSmsMessage,
+    onClick: () -> Unit
+) {
+    val timeFormat = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
+    val timeText = timeFormat.format(Date(message.dateMillis))
+    val isTransaction = message.isFinancial
+    val isDuplicate = message.isDuplicate
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                if (isTransaction && !isDuplicate) CardBackground
+                else BackgroundDark
+            )
+            .clickable(enabled = isTransaction && !isDuplicate) { onClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        // Sender avatar
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(
+                    when {
+                        isDuplicate -> IncomeGreen.copy(alpha = 0.15f)
+                        isTransaction -> BankAccent.copy(alpha = 0.15f)
+                        else -> CardBackgroundElevated
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isDuplicate) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = IncomeGreen,
+                    modifier = Modifier.size(22.dp)
+                )
+            } else if (isTransaction) {
+                Icon(
+                    imageVector = Icons.Default.AccountBalance,
+                    contentDescription = null,
+                    tint = BankAccent,
+                    modifier = Modifier.size(22.dp)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    tint = TextMuted,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "${inboxSms.size} financial SMS found (last 90 days)",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = TextMuted, fontWeight = FontWeight.SemiBold
+                    text = message.sender.ifBlank { "Unknown" },
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = if (isTransaction) FontWeight.Bold else FontWeight.SemiBold,
+                        color = when {
+                            isDuplicate -> TextMuted
+                            isTransaction -> TextPrimary
+                            else -> TextSecondary
+                        }
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Text(
+                    text = timeText,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = if (isTransaction && !isDuplicate) TextSecondary else TextDisabled,
+                        fontSize = 11.sp
                     )
                 )
-                OutlinedButton(
-                    onClick = { viewModel.syncInboxSms() },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
-                    modifier = Modifier.height(34.dp)
+            }
+
+            Spacer(modifier = Modifier.height(3.dp))
+
+            // For financial SMS: show amount + body preview
+            if (isTransaction && message.parsedCandidate != null) {
+                val candidate = message.parsedCandidate
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Refresh, null, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Refresh", fontSize = 12.sp)
-                }
-            }
-
-            Spacer(Modifier.height(6.dp))
-
-            Text(
-                "Tap any transaction to review and add it:",
-                style = MaterialTheme.typography.bodySmall.copy(color = TextMuted, fontSize = 11.sp)
-            )
-
-            Spacer(Modifier.height(10.dp))
-
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(inboxSms) { candidate ->
-                    InboxSmsCard(
-                        candidate = candidate,
-                        onClick = { viewModel.useSmsCandidateToAdd(candidate) }
+                    val amountColor = when {
+                        isDuplicate -> TextMuted
+                        candidate.type == TransactionType.INCOME -> IncomeGreen
+                        else -> ExpenseRed
+                    }
+                    val prefix = if (candidate.type == TransactionType.INCOME) "+" else "-"
+                    Text(
+                        text = "$prefix${CurrencyFormatter.format(candidate.amount)}",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = amountColor,
+                            fontSize = 12.5.sp
+                        )
                     )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "·",
+                        color = TextMuted,
+                        fontSize = 12.sp
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = candidate.suggestedAccount.displayName,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = if (isDuplicate) TextDisabled else TextSecondary,
+                            fontSize = 11.sp
+                        )
+                    )
+                    if (isDuplicate) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "· Imported",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = IncomeGreen,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
                 }
+                Spacer(modifier = Modifier.height(2.dp))
             }
+
+            // Body preview
+            Text(
+                text = message.body.replace("\n", " ").trim(),
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = if (isDuplicate) TextDisabled else TextMuted,
+                    lineHeight = 16.sp,
+                    fontSize = 12.sp
+                ),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -421,7 +620,7 @@ private fun PasteSmsContent(viewModel: MainViewModel) {
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(candidates) { candidate ->
-                    InboxSmsCard(
+                    PastedSmsCard(
                         candidate = candidate,
                         onClick = { viewModel.useSmsCandidateToAdd(candidate) }
                     )
@@ -448,7 +647,7 @@ private fun PasteSmsContent(viewModel: MainViewModel) {
 }
 
 @Composable
-private fun InboxSmsCard(
+private fun PastedSmsCard(
     candidate: SmsCandidate,
     onClick: () -> Unit
 ) {
@@ -471,20 +670,15 @@ private fun InboxSmsCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                Text(
+                    text = candidate.suggestedCategory,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = if (candidate.isDuplicate) TextMuted else TextPrimary
+                    ),
+                    maxLines = 1,
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = candidate.suggestedCategory,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = if (candidate.isDuplicate) TextMuted else TextPrimary
-                        ),
-                        maxLines = 1
-                    )
-                }
-
+                )
                 Text(
                     text = if (candidate.type == TransactionType.INCOME)
                         "+ ${CurrencyFormatter.format(candidate.amount)}"
@@ -512,16 +706,6 @@ private fun InboxSmsCard(
                 )
             )
 
-            if (candidate.postBalance != null) {
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "Post Balance: ${CurrencyFormatter.format(candidate.postBalance)}",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextMuted, fontSize = 10.5.sp
-                    )
-                )
-            }
-
             if (candidate.isDuplicate) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -541,14 +725,20 @@ private fun InboxSmsCard(
                     )
                 }
             }
-
-            if (candidate.isPendingVerification) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Pending Verification in SMS",
-                    style = MaterialTheme.typography.labelSmall.copy(color = TextMuted)
-                )
-            }
         }
+    }
+}
+
+private fun getDateLabel(millis: Long): String {
+    val msgCal = Calendar.getInstance().apply { timeInMillis = millis }
+    val todayCal = Calendar.getInstance()
+    val yesterdayCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+
+    return when {
+        msgCal.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR) &&
+                msgCal.get(Calendar.DAY_OF_YEAR) == todayCal.get(Calendar.DAY_OF_YEAR) -> "Today"
+        msgCal.get(Calendar.YEAR) == yesterdayCal.get(Calendar.YEAR) &&
+                msgCal.get(Calendar.DAY_OF_YEAR) == yesterdayCal.get(Calendar.DAY_OF_YEAR) -> "Yesterday"
+        else -> SimpleDateFormat("EEEE, dd MMM yyyy", Locale.getDefault()).format(Date(millis))
     }
 }

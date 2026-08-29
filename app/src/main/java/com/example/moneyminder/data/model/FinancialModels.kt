@@ -72,6 +72,17 @@ data class SmsCandidate(
     val isSelected: Boolean = true
 )
 
+data class InboxSmsMessage(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val sender: String,
+    val body: String,
+    val dateMillis: Long,
+    val isFinancial: Boolean = false,
+    val parsedCandidate: SmsCandidate? = null,
+    val isDuplicate: Boolean = false,
+    val duplicateReason: String? = null
+)
+
 data class ImportItem(
     val id: String = java.util.UUID.randomUUID().toString(),
     val type: TransactionType,

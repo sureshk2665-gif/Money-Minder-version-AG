@@ -2,6 +2,7 @@ package com.example.moneyminder.data.parser
 
 import android.content.Context
 import android.net.Uri
+import com.example.moneyminder.data.model.InboxSmsMessage
 import com.example.moneyminder.data.model.SmsCandidate
 
 object SmsInboxReader {
@@ -11,6 +12,22 @@ object SmsInboxReader {
         val body: String,
         val dateMillis: Long
     )
+
+    fun readAllSms(context: Context, limitDays: Int = 90): List<InboxSmsMessage> {
+        val rawMessages = readInbox(context, limitDays)
+        return rawMessages.map { raw ->
+            val candidate = SmsParser.parseSingle(raw.body)
+            InboxSmsMessage(
+                sender = raw.sender,
+                body = raw.body,
+                dateMillis = raw.dateMillis,
+                isFinancial = candidate != null,
+                parsedCandidate = candidate?.copy(
+                    timestamp = if (candidate.timestamp == 0L) raw.dateMillis else candidate.timestamp
+                )
+            )
+        }
+    }
 
     fun readFinancialSms(context: Context, limitDays: Int = 90): List<SmsCandidate> {
         val rawMessages = readInbox(context, limitDays)
@@ -54,15 +71,13 @@ object SmsInboxReader {
                     val body = it.getString(bodyIdx) ?: ""
                     val date = it.getLong(dateIdx)
 
-                    if (body.length > 15) {
+                    if (body.isNotBlank()) {
                         results.add(RawSms(sender, body, date))
                     }
                 }
             }
         } catch (_: SecurityException) {
-            // Permission not granted
         } catch (_: Exception) {
-            // Content provider not available
         }
 
         return results
