@@ -1,6 +1,7 @@
 package com.example.moneyminder.data.io
 
 import android.content.Context
+import com.example.moneyminder.data.backup.BackupFileManager
 import com.example.moneyminder.data.model.AccountBalances
 import com.example.moneyminder.data.model.TransactionEntity
 import com.example.moneyminder.data.model.TransactionType
@@ -17,11 +18,10 @@ object ExcelExporter {
     fun exportToExcel(
         context: Context,
         transactions: List<TransactionEntity>,
-        balances: AccountBalances,
-        fileName: String = "Money_Minder_Report_${System.currentTimeMillis()}.xlsx"
+        balances: AccountBalances
     ): File {
-        val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
-        val outputFile = File(exportDir, fileName)
+        val outputFile = BackupFileManager.getExcelExportFile(context)
+        outputFile.parentFile?.mkdirs()
 
         val zipOut = ZipOutputStream(FileOutputStream(outputFile))
 

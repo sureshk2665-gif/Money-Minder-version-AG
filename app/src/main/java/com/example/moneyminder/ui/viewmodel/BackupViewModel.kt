@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.moneyminder.data.backup.BackupFileManager
 import com.example.moneyminder.data.backup.BackupPreferences
 import com.example.moneyminder.data.backup.BackupSerializer
 import com.example.moneyminder.data.backup.ScheduledBackupWorker
@@ -63,7 +64,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 )
 
                 val backupJson = BackupSerializer.toJson(backupFile)
-                val file = ScheduledBackupWorker.getBackupFile(context)
+                val file = BackupFileManager.getManualBackupFile(context)
                 withContext(Dispatchers.IO) {
                     file.parentFile?.mkdirs()
                     file.writeText(backupJson, Charsets.UTF_8)
@@ -77,11 +78,11 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 _backupStatus.update {
                     buildStatusFromPrefs().copy(
                         operationStatus = BackupOperationStatus.SUCCESS,
-                        operationMessage = "Backup saved (${file.length() / 1024} KB)",
+                        operationMessage = "Backup saved: ${file.name} (${file.length() / 1024} KB)",
                         operationProgress = 1f
                     )
                 }
-                toast("Backup saved successfully")
+                toast("Backup saved to ${BackupFileManager.getManualDisplayPath()}")
             } catch (e: Exception) {
                 setOperationStatus(BackupOperationStatus.FAILED, "Backup failed: ${e.message}")
                 toast("Backup failed: ${e.message}")
@@ -91,13 +92,13 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
 
     fun restoreFromBackup() {
         viewModelScope.launch {
-            val file = ScheduledBackupWorker.getBackupFile(context)
-            if (!file.exists()) {
+            val file = BackupFileManager.findLatestBackup(context)
+            if (file == null || !file.exists()) {
                 toast("No backup found")
                 return@launch
             }
 
-            setOperationStatus(BackupOperationStatus.IN_PROGRESS, "Reading backup...", 0.2f)
+            setOperationStatus(BackupOperationStatus.IN_PROGRESS, "Reading ${file.name}...", 0.2f)
             try {
                 val json = withContext(Dispatchers.IO) { file.readText(Charsets.UTF_8) }
                 val parseResult = BackupSerializer.fromJson(json)
@@ -178,14 +179,14 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 )
 
                 val backupJson = BackupSerializer.toJson(backupFile)
-                val sdf = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US)
-                val fileName = "MoneyMinder_Backup_${sdf.format(java.util.Date())}.mmbackup"
-
-                val cacheFile = java.io.File(ctx.cacheDir, fileName)
-                cacheFile.writeText(backupJson, Charsets.UTF_8)
+                val manualFile = BackupFileManager.getManualBackupFile(ctx)
+                withContext(Dispatchers.IO) {
+                    manualFile.parentFile?.mkdirs()
+                    manualFile.writeText(backupJson, Charsets.UTF_8)
+                }
 
                 val fileUri = androidx.core.content.FileProvider.getUriForFile(
-                    ctx, "${ctx.packageName}.fileprovider", cacheFile
+                    ctx, "${ctx.packageName}.fileprovider", manualFile
                 )
 
                 val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
@@ -201,8 +202,12 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 ctx.startActivity(chooser)
 
+                prefs.lastBackupAt = System.currentTimeMillis()
+                prefs.lastBackupSizeBytes = manualFile.length()
+                prefs.lastBackupStatus = "Manual backup shared"
+
                 setOperationStatus(BackupOperationStatus.SUCCESS, "Backup ready to share", 1f)
-                toast("Choose an app to share the backup")
+                toast("Backup saved & shared from ${BackupFileManager.getManualDisplayPath()}")
             } catch (e: Exception) {
                 setOperationStatus(BackupOperationStatus.FAILED, "Error: ${e.message}")
                 toast("Could not create backup: ${e.message}")
@@ -210,7 +215,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun hasLocalBackup(): Boolean = ScheduledBackupWorker.getBackupFile(context).exists()
+    fun hasLocalBackup(): Boolean = BackupFileManager.hasAnyBackup(context)
 
     private fun applyRestore(file: MoneyMinderBackupFile): Boolean {
         return try {

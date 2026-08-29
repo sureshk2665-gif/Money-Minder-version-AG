@@ -142,7 +142,6 @@ fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
     val selectedTab by viewModel.selectedTab.collectAsState()
     val showMonthPicker by viewModel.showMonthPicker.collectAsState()
     val showSettings by viewModel.showSettings.collectAsState()
-    val showSmsReview by viewModel.showSmsReview.collectAsState()
     val showImportReview by viewModel.showImportReview.collectAsState()
     val selectedDetailAccount by viewModel.selectedDetailAccount.collectAsState()
     val selectedTxDetail by viewModel.selectedTransactionDetail.collectAsState()
@@ -294,15 +293,7 @@ fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
         )
     }
 
-    // 4. SMS Review Popup / Flow
-    if (showSmsReview) {
-        SmsReviewScreen(
-            viewModel = viewModel,
-            onDismiss = { viewModel.setShowSmsReview(false) }
-        )
-    }
-
-    // 5. Excel / PDF Import Review Modal
+    // 4. Excel / PDF Import Review Modal
     if (showImportReview) {
         ImportReviewScreen(
             viewModel = viewModel,
@@ -407,8 +398,5 @@ fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
 
 @Composable
 fun SmsReviewTabContent(viewModel: MainViewModel) {
-    SmsReviewScreen(
-        viewModel = viewModel,
-        onDismiss = { viewModel.setSelectedTab(0) }
-    )
+    SmsReviewScreen(viewModel = viewModel)
 }

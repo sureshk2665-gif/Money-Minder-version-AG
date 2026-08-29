@@ -136,7 +136,7 @@ fun HomeScreen(
                     onAddExpense = { onNavigateToAdd(TransactionType.EXPENSE) },
                     onAddIncome = { onNavigateToAdd(TransactionType.INCOME) },
                     onTransfer = { onNavigateToAdd(TransactionType.TRANSFER) },
-                    onImportSms = { viewModel.setShowSmsReview(true) },
+                    onImportSms = { viewModel.setSelectedTab(4) },
                     onExportReport = onOpenExport
                 )
             }

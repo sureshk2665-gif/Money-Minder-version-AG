@@ -8,7 +8,6 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.example.moneyminder.data.db.TransactionDao
 import com.example.moneyminder.data.model.BackupSettingsRecord
-import java.io.File
 import java.util.Calendar
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -45,7 +44,9 @@ class ScheduledBackupWorker(
             )
 
             val backupJson = BackupSerializer.toJson(backupFile)
-            val file = getBackupFile(applicationContext)
+
+            BackupFileManager.clearOldAutoBackups(applicationContext)
+            val file = BackupFileManager.getAutoBackupFile(applicationContext)
             file.parentFile?.mkdirs()
             file.writeText(backupJson, Charsets.UTF_8)
 
@@ -61,13 +62,7 @@ class ScheduledBackupWorker(
     }
 
     companion object {
-        private const val BACKUP_FILE_NAME = "moneyminder_backup.mmbackup"
-
         private val BACKUP_HOURS = intArrayOf(10, 14, 22)
-
-        fun getBackupFile(context: Context): File {
-            return File(context.filesDir, "backups/$BACKUP_FILE_NAME")
-        }
 
         fun scheduleAll(context: Context) {
             val wm = WorkManager.getInstance(context)

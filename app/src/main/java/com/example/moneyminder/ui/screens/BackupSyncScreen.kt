@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.moneyminder.data.backup.BackupFileManager
 import com.example.moneyminder.data.model.BackupOperationStatus
 import com.example.moneyminder.theme.BankAccent
 import com.example.moneyminder.theme.CardBackground
@@ -271,6 +272,46 @@ fun BackupSyncScreen(
                         }
                     }
 
+                    // Storage location info
+                    item {
+                        Spacer(Modifier.height(4.dp))
+                        BackupSectionHeader("STORAGE LOCATION")
+                        Spacer(Modifier.height(6.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(CardBackgroundElevated)
+                                .border(1.dp, CardBorderSubtle, RoundedCornerShape(14.dp))
+                                .padding(14.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.FolderOpen,
+                                        null,
+                                        tint = BankAccent,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        BackupFileManager.getDisplayPath(),
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold
+                                        )
+                                    )
+                                }
+                                Text(
+                                    "Auto backups: .../Automatic/  (replaced each time)\nManual backups: .../Manual/  (kept forever)\nPDF & Excel exports saved in root folder",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = TextMuted, fontSize = 10.5.sp, lineHeight = 15.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+
                     // Last backup status
                     item {
                         val hasLastBackup = status.lastBackupAt > 0L
@@ -301,7 +342,7 @@ fun BackupSyncScreen(
                             icon = Icons.Default.Save,
                             iconTint = IncomeGreen,
                             title = "Backup Now",
-                            subtitle = "Save backup to device storage",
+                            subtitle = "Save to Manual/ folder (MMBKMN...)",
                             onClick = { viewModel.backupNow() }
                         )
 
