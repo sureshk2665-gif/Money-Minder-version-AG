@@ -65,6 +65,12 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
         _backupStatus.update { buildStatusFromPrefs() }
     }
 
+    fun setCustomClientSecret(secret: String) {
+        prefs.customClientSecret = secret.trim()
+    }
+
+    fun getCustomClientSecret(): String = prefs.customClientSecret
+
     fun startOAuthInBrowser(ctx: Context) {
         try {
             setOperationStatus(BackupOperationStatus.IN_PROGRESS, "Opening browser for Google sign-in…", 0.1f)

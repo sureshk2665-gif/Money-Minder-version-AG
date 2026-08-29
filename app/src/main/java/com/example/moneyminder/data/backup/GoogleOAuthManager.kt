@@ -239,8 +239,12 @@ object GoogleOAuthManager {
                 readTimeout = 15000
             }
 
+            val clientSecret = prefs.customClientSecret
             val body = buildString {
                 append("client_id=").append(URLEncoder.encode(clientId, "UTF-8"))
+                if (clientSecret.isNotBlank()) {
+                    append("&client_secret=").append(URLEncoder.encode(clientSecret, "UTF-8"))
+                }
                 append("&code=").append(URLEncoder.encode(code, "UTF-8"))
                 append("&code_verifier=").append(URLEncoder.encode(verifier, "UTF-8"))
                 append("&grant_type=authorization_code")
@@ -319,8 +323,12 @@ object GoogleOAuthManager {
                 readTimeout = 15000
             }
 
+            val clientSecret = prefs.customClientSecret
             val body = buildString {
                 append("client_id=").append(URLEncoder.encode(clientId, "UTF-8"))
+                if (clientSecret.isNotBlank()) {
+                    append("&client_secret=").append(URLEncoder.encode(clientSecret, "UTF-8"))
+                }
                 append("&refresh_token=").append(URLEncoder.encode(refreshToken, "UTF-8"))
                 append("&grant_type=refresh_token")
             }
