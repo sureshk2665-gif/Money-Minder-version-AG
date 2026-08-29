@@ -16,10 +16,12 @@ import com.example.moneyminder.data.model.CategoryEntity
 import com.example.moneyminder.data.model.CategorySpending
 import com.example.moneyminder.data.model.DaySummary
 import com.example.moneyminder.data.model.ImportItem
+import com.example.moneyminder.data.model.InboxSmsMessage
 import com.example.moneyminder.data.model.MonthlySummary
 import com.example.moneyminder.data.model.SmsCandidate
 import com.example.moneyminder.data.model.TransactionEntity
 import com.example.moneyminder.data.model.TransactionType
+import com.example.moneyminder.data.parser.SmsInboxReader
 import com.example.moneyminder.data.parser.SmsParser
 import com.example.moneyminder.util.DateTimeUtils
 import kotlinx.coroutines.Dispatchers
@@ -69,16 +71,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _showSettings = MutableStateFlow(false)
     val showSettings: StateFlow<Boolean> = _showSettings.asStateFlow()
 
-    private val _showSmsReview = MutableStateFlow(false)
-    val showSmsReview: StateFlow<Boolean> = _showSmsReview.asStateFlow()
-
-    // SMS Extraction Candidates
+    // SMS Extraction Candidates (from paste)
     private val _smsCandidates = MutableStateFlow<List<SmsCandidate>>(emptyList())
     val smsCandidates: StateFlow<List<SmsCandidate>> = _smsCandidates.asStateFlow()
+
+    // SMS Inbox Sync (from device inbox) — ALL messages
+    private val _inboxSmsList = MutableStateFlow<List<InboxSmsMessage>>(emptyList())
+    val inboxSmsList: StateFlow<List<InboxSmsMessage>> = _inboxSmsList.asStateFlow()
+
+    private val _smsLoading = MutableStateFlow(false)
+    val smsLoading: StateFlow<Boolean> = _smsLoading.asStateFlow()
+
+    private val _smsPermissionGranted = MutableStateFlow(false)
+    val smsPermissionGranted: StateFlow<Boolean> = _smsPermissionGranted.asStateFlow()
 
     // Pre-filled Transaction data for Add Screen (e.g. from SMS or duplicate)
     private val _prefilledTransaction = MutableStateFlow<TransactionEntity?>(null)
     val prefilledTransaction: StateFlow<TransactionEntity?> = _prefilledTransaction.asStateFlow()
+
+    // Pending transaction type from quick actions (Expense/Income/Transfer)
+    private val _pendingTransactionType = MutableStateFlow<TransactionType?>(null)
+    val pendingTransactionType: StateFlow<TransactionType?> = _pendingTransactionType.asStateFlow()
 
     // Import Items Preview
     private val _importItems = MutableStateFlow<List<ImportItem>>(emptyList())
@@ -124,6 +137,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setSelectedTab(tab: Int) {
         _selectedTab.value = tab
+    }
+
+    fun setPendingTransactionType(type: TransactionType) {
+        _pendingTransactionType.value = type
+    }
+
+    fun clearPendingTransactionType() {
+        _pendingTransactionType.value = null
     }
 
     fun setSelectedYearMonth(year: Int, month: Int) {
@@ -187,9 +208,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _showSettings.value = show
     }
 
-    fun setShowSmsReview(show: Boolean) {
-        _showSmsReview.value = show
-    }
 
     fun setShowImportReview(show: Boolean) {
         _showImportReview.value = show
@@ -322,6 +340,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun useInboxSmsToAdd(msg: InboxSmsMessage) {
+        val candidate = msg.parsedCandidate ?: return
+        useSmsCandidateToAdd(candidate)
+    }
+
     fun useSmsCandidateToAdd(candidate: SmsCandidate) {
         _prefilledTransaction.value = TransactionEntity(
             type = candidate.type,
@@ -333,12 +356,54 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             referenceNumber = candidate.referenceNumber,
             isPending = candidate.isPendingVerification
         )
-        _showSmsReview.value = false
         _selectedTab.value = 2 // Add tab
     }
 
     fun clearSmsCandidates() {
         _smsCandidates.value = emptyList()
+    }
+
+    fun setSmsPermissionGranted(granted: Boolean) {
+        _smsPermissionGranted.value = granted
+        if (granted) {
+            syncInboxSms()
+        }
+    }
+
+    fun syncInboxSms() {
+        viewModelScope.launch(Dispatchers.IO) {
+            withContext(Dispatchers.Main) { _smsLoading.value = true }
+            val context = getApplication<Application>()
+            val allMessages = SmsInboxReader.readAllSms(context, limitDays = 90)
+
+            val validated = allMessages.map { msg ->
+                if (msg.isFinancial && msg.parsedCandidate != null) {
+                    val candidate = msg.parsedCandidate
+                    val dup = dao.findDuplicate(
+                        referenceNumber = candidate.referenceNumber,
+                        timestamp = candidate.timestamp,
+                        amount = candidate.amount,
+                        type = candidate.type,
+                        account = candidate.suggestedAccount
+                    )
+                    if (dup != null) {
+                        msg.copy(
+                            isDuplicate = true,
+                            duplicateReason = if (!candidate.referenceNumber.isNullOrBlank()) "Already imported" else "Similar transaction found"
+                        )
+                    } else {
+                        msg
+                    }
+                } else {
+                    msg
+                }
+            }
+
+            withContext(Dispatchers.Main) {
+                _inboxSmsList.value = validated
+                _smsLoading.value = false
+            }
+        }
     }
 
     // Import from File (Excel / PDF)

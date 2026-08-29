@@ -3,4 +3,5 @@
     <cache-path name="backups" path="." />
     <cache-path name="export_reports" path="exports/" />
     <external-cache-path name="external_export_reports" path="exports/" />
+    <external-files-path name="mm_backup" path="Mm Backup/" />
 </paths>

@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,8 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -76,7 +73,7 @@ import com.example.moneyminder.util.CurrencyFormatter
 fun HomeScreen(
     viewModel: MainViewModel,
     onNavigateToAdd: (type: TransactionType) -> Unit,
-    onOpenExport: () -> Unit,
+    onOpenExport: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val selectedYear by viewModel.selectedYear.collectAsState()
@@ -135,9 +132,7 @@ fun HomeScreen(
                 QuickActionsSection(
                     onAddExpense = { onNavigateToAdd(TransactionType.EXPENSE) },
                     onAddIncome = { onNavigateToAdd(TransactionType.INCOME) },
-                    onTransfer = { onNavigateToAdd(TransactionType.TRANSFER) },
-                    onImportSms = { viewModel.setShowSmsReview(true) },
-                    onExportReport = onOpenExport
+                    onTransfer = { onNavigateToAdd(TransactionType.TRANSFER) }
                 )
             }
 
@@ -359,9 +354,7 @@ private fun MonthlyTransferSummaryCard(
 private fun QuickActionsSection(
     onAddExpense: () -> Unit,
     onAddIncome: () -> Unit,
-    onTransfer: () -> Unit,
-    onImportSms: () -> Unit,
-    onExportReport: () -> Unit
+    onTransfer: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
@@ -372,50 +365,31 @@ private fun QuickActionsSection(
             )
         )
 
-        LazyRow(
+        Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(horizontal = 2.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
-            item {
-                QuickActionButton(
-                    title = "Add Expense",
-                    icon = Icons.Default.ArrowDownward,
-                    color = ExpenseRed,
-                    onClick = onAddExpense
-                )
-            }
-            item {
-                QuickActionButton(
-                    title = "Add Income",
-                    icon = Icons.Default.ArrowUpward,
-                    color = IncomeGreen,
-                    onClick = onAddIncome
-                )
-            }
-            item {
-                QuickActionButton(
-                    title = "Transfer",
-                    icon = Icons.Default.SwapHoriz,
-                    color = TransferBlueGrey,
-                    onClick = onTransfer
-                )
-            }
-            item {
-                QuickActionButton(
-                    title = "Import SMS",
-                    icon = Icons.Default.Sms,
-                    color = TextPrimary,
-                    onClick = onImportSms
-                )
-            }
-            item {
-                QuickActionButton(
-                    title = "Export Report",
-                    icon = Icons.Default.FileDownload,
-                    color = TextPrimary,
-                    onClick = onExportReport
-                )
-            }
+            QuickActionButton(
+                title = "Expense",
+                icon = Icons.Default.ArrowDownward,
+                color = ExpenseRed,
+                onClick = onAddExpense,
+                modifier = Modifier.weight(1f)
+            )
+            QuickActionButton(
+                title = "Income",
+                icon = Icons.Default.ArrowUpward,
+                color = IncomeGreen,
+                onClick = onAddIncome,
+                modifier = Modifier.weight(1f)
+            )
+            QuickActionButton(
+                title = "Transfer",
+                icon = Icons.Default.SwapHoriz,
+                color = TransferBlueGrey,
+                onClick = onTransfer,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
@@ -425,15 +399,17 @@ private fun QuickActionButton(
     title: String,
     icon: ImageVector,
     color: Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .background(CardBackground)
             .border(width = 1.dp, color = CardBorder, shape = RoundedCornerShape(16.dp))
             .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .padding(horizontal = 10.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -453,7 +429,7 @@ private fun QuickActionButton(
                     modifier = Modifier.size(16.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelMedium.copy(

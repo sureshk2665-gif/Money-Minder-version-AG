@@ -1,26 +1,17 @@
 package com.example.moneyminder.data.backup
 
 import android.content.Context
-import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.PeriodicWorkRequest
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.example.moneyminder.data.db.TransactionDao
-import com.example.moneyminder.data.model.BackupFrequency
 import com.example.moneyminder.data.model.BackupSettingsRecord
+import java.util.Calendar
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-/**
- * WorkManager background worker that performs scheduled automatic backups.
- * Respects Android battery and network constraints.
- * Skips backup if data has not changed since the last successful backup.
- */
 class ScheduledBackupWorker(
     context: Context,
     params: WorkerParameters
@@ -28,15 +19,9 @@ class ScheduledBackupWorker(
 
     override suspend fun doWork(): Result {
         val prefs = BackupPreferences(applicationContext)
-
-        // Bail out if auto backup is not configured
-        if (!prefs.isAutoBackupEnabled) return Result.success()
-        if (!prefs.isConnected || (prefs.oauthAccessToken.isBlank() && prefs.refreshToken.isBlank())) return Result.success()
-
         val dao = TransactionDao(applicationContext)
         val transactions = dao.getAllCalculatedTransactions()
 
-        // Skip if nothing changed since last successful backup
         val currentHash = BackupSerializer.computeDataHash(transactions)
         if (currentHash == prefs.lastSuccessfulBackupHash) {
             prefs.lastBackupStatus = "No changes since last backup"
@@ -48,16 +33,10 @@ class ScheduledBackupWorker(
             val balances = dao.getCurrentBalances()
             val backupId = UUID.randomUUID().toString().replace("-", "").take(12)
 
-            val backupSettings = BackupSettingsRecord(
-                autoBackupEnabled = prefs.isAutoBackupEnabled,
-                backupFrequency = prefs.backupFrequency.name,
-                connectedEmail = prefs.connectedEmail
-            )
-
             val backupFile = BackupSerializer.serialize(
                 transactions = transactions,
                 categories = categories,
-                settings = backupSettings,
+                settings = BackupSettingsRecord(autoBackupEnabled = true),
                 bankBalance = balances.bankBalance,
                 walletBalance = balances.walletBalance,
                 cashBalance = balances.cashBalance,
@@ -65,25 +44,17 @@ class ScheduledBackupWorker(
             )
 
             val backupJson = BackupSerializer.toJson(backupFile)
-            val manager = GoogleOAuthBackupManager(prefs)
-            val uploadResult = manager.uploadBackup(backupJson, backupFile, isAutomatic = true)
 
-            when (uploadResult) {
-                is GoogleOAuthBackupManager.BackupResult.Success -> {
-                    prefs.lastBackupAt = System.currentTimeMillis()
-                    prefs.lastBackupId = backupId
-                    prefs.lastBackupSizeBytes = uploadResult.sizeBytes
-                    prefs.lastBackupStatus = "Automatic backup successful"
-                    prefs.lastSuccessfulBackupHash = currentHash
-                    Result.success()
-                }
-                is GoogleOAuthBackupManager.BackupResult.Failure -> {
-                    prefs.lastBackupStatus = "Backup failed: ${uploadResult.message}"
-                    Result.retry()
-                }
-            }
+            BackupFileManager.clearOldAutoBackups(applicationContext)
+            val file = BackupFileManager.getAutoBackupFile(applicationContext)
+            file.parentFile?.mkdirs()
+            file.writeText(backupJson, Charsets.UTF_8)
 
-
+            prefs.lastBackupAt = System.currentTimeMillis()
+            prefs.lastBackupSizeBytes = file.length()
+            prefs.lastBackupStatus = "Automatic backup successful"
+            prefs.lastSuccessfulBackupHash = currentHash
+            Result.success()
         } catch (e: Exception) {
             prefs.lastBackupStatus = "Backup error: ${e.message}"
             Result.retry()
@@ -91,49 +62,41 @@ class ScheduledBackupWorker(
     }
 
     companion object {
-        private const val WORK_NAME_PERIODIC = "mm_scheduled_backup"
-        private const val WORK_NAME_ONETIME  = "mm_immediate_backup"
+        private val BACKUP_HOURS = intArrayOf(10, 14, 22)
 
-        /** Schedule or reschedule the periodic backup job based on user frequency preference. */
-        fun schedule(context: Context, frequency: BackupFrequency) {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
+        fun scheduleAll(context: Context) {
+            val wm = WorkManager.getInstance(context)
+            for (hour in BACKUP_HOURS) {
+                val tag = "mm_backup_${hour}h"
+                val delay = calculateDelayTo(hour)
+                val request = PeriodicWorkRequestBuilder<ScheduledBackupWorker>(
+                    24, TimeUnit.HOURS,
+                    30, TimeUnit.MINUTES
+                )
+                    .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+                    .build()
 
-            val (repeatInterval, unit) = when (frequency) {
-                BackupFrequency.DAILY                  -> 1L to TimeUnit.DAYS
-                BackupFrequency.WEEKLY                 -> 7L to TimeUnit.DAYS
-                BackupFrequency.MONTHLY                -> 30L to TimeUnit.DAYS
-                BackupFrequency.AFTER_EVERY_TRANSACTION -> 1L to TimeUnit.HOURS // capped at 1h debounce
+                wm.enqueueUniquePeriodicWork(tag, ExistingPeriodicWorkPolicy.UPDATE, request)
             }
-
-            val request = PeriodicWorkRequestBuilder<ScheduledBackupWorker>(repeatInterval, unit)
-                .setConstraints(constraints)
-                .build()
-
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                WORK_NAME_PERIODIC,
-                ExistingPeriodicWorkPolicy.UPDATE,
-                request
-            )
         }
 
-        /** Enqueue a one-time immediate backup (used for "Backup Now" button). */
-        fun runOnce(context: Context) {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
-
-            val request = OneTimeWorkRequestBuilder<ScheduledBackupWorker>()
-                .setConstraints(constraints)
-                .build()
-
-            WorkManager.getInstance(context).enqueue(request)
+        fun cancelAll(context: Context) {
+            val wm = WorkManager.getInstance(context)
+            for (hour in BACKUP_HOURS) {
+                wm.cancelUniqueWork("mm_backup_${hour}h")
+            }
         }
 
-        /** Cancel all scheduled backup jobs. */
-        fun cancel(context: Context) {
-            WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME_PERIODIC)
+        private fun calculateDelayTo(targetHour: Int): Long {
+            val now = Calendar.getInstance()
+            val target = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, targetHour)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+                if (before(now)) add(Calendar.DAY_OF_MONTH, 1)
+            }
+            return target.timeInMillis - now.timeInMillis
         }
     }
 }

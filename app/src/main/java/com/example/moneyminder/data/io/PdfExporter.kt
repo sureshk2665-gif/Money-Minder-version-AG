@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
+import com.example.moneyminder.data.backup.BackupFileManager
 import com.example.moneyminder.data.model.AccountBalances
 import com.example.moneyminder.data.model.TransactionEntity
 import com.example.moneyminder.data.model.TransactionType
@@ -19,11 +20,10 @@ object PdfExporter {
     fun exportToPdf(
         context: Context,
         transactions: List<TransactionEntity>,
-        balances: AccountBalances,
-        fileName: String = "Money_Minder_Statement_${System.currentTimeMillis()}.pdf"
+        balances: AccountBalances
     ): File {
-        val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
-        val outputFile = File(exportDir, fileName)
+        val outputFile = BackupFileManager.getPdfExportFile(context)
+        outputFile.parentFile?.mkdirs()
 
         val document = PdfDocument()
         val pageWidth = 595 // Standard A4 points at 72dpi

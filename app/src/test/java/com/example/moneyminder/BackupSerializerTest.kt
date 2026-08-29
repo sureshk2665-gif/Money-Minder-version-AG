@@ -2,7 +2,6 @@ package com.example.moneyminder
 
 import com.example.moneyminder.data.backup.BackupSerializer
 import com.example.moneyminder.data.model.AccountType
-import com.example.moneyminder.data.model.BackupFrequency
 import com.example.moneyminder.data.model.BackupSettingsRecord
 import com.example.moneyminder.data.model.CategoryEntity
 import com.example.moneyminder.data.model.TransactionEntity
@@ -61,7 +60,7 @@ class BackupSerializerTest {
             currencySymbol = "₹",
             firstDayOfMonth = 1,
             autoBackupEnabled = true,
-            backupFrequency = BackupFrequency.DAILY.name,
+            backupFrequency = "3x daily",
             connectedEmail = "testuser@gmail.com"
         )
 
