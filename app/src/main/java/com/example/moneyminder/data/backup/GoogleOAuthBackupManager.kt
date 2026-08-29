@@ -49,7 +49,9 @@ class GoogleOAuthBackupManager(
         return refreshRes.getOrNull()
     }
 
-    private fun getOrCreateFolder(token: String): String? {
+    data class FolderResult(val folderId: String?, val error: String?)
+
+    private fun getOrCreateFolder(token: String): FolderResult {
         val query = "name='$BACKUP_FOLDER_NAME' and mimeType='application/vnd.google-apps.folder' and trashed=false"
         val searchUrl = URL("$DRIVE_API_BASE/files?q=${URLEncoder.encode(query, "UTF-8")}&fields=files(id)&spaces=drive")
         val conn = (searchUrl.openConnection() as HttpURLConnection).apply {
@@ -63,8 +65,11 @@ class GoogleOAuthBackupManager(
             val json = JSONObject(conn.inputStream.bufferedReader().readText())
             val files = json.optJSONArray("files")
             if (files != null && files.length() > 0) {
-                return files.getJSONObject(0).getString("id")
+                return FolderResult(files.getJSONObject(0).getString("id"), null)
             }
+        } else if (conn.responseCode != 200) {
+            val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP ${conn.responseCode}"
+            return FolderResult(null, "Drive search failed (${conn.responseCode}): $err")
         }
 
         val createUrl = URL("$DRIVE_API_BASE/files")
@@ -85,9 +90,10 @@ class GoogleOAuthBackupManager(
         OutputStreamWriter(createConn.outputStream).use { it.write(folderMeta.toString()) }
 
         return if (createConn.responseCode in 200..201) {
-            JSONObject(createConn.inputStream.bufferedReader().readText()).getString("id")
+            FolderResult(JSONObject(createConn.inputStream.bufferedReader().readText()).getString("id"), null)
         } else {
-            null
+            val err = createConn.errorStream?.bufferedReader()?.readText() ?: "HTTP ${createConn.responseCode}"
+            FolderResult(null, "Folder creation failed (${createConn.responseCode}): $err")
         }
     }
 
@@ -102,8 +108,9 @@ class GoogleOAuthBackupManager(
             ?: return@withContext BackupResult.Failure("Not signed in. Please connect your Google account.")
 
         try {
-            val folderId = getOrCreateFolder(token)
-                ?: return@withContext BackupResult.Failure("Could not create backup folder in Google Drive")
+            val folderResult = getOrCreateFolder(token)
+            val folderId = folderResult.folderId
+                ?: return@withContext BackupResult.Failure(folderResult.error ?: "Could not create backup folder in Google Drive")
 
             val sdf = SimpleDateFormat("yyyy-MM-dd_HHmm", Locale.US)
             val dateLabel = sdf.format(Date(backupFile.createdAt))
@@ -185,8 +192,9 @@ class GoogleOAuthBackupManager(
             ?: return@withContext Result.failure(Exception("Not signed in"))
 
         try {
-            val folderId = getOrCreateFolder(token)
-                ?: return@withContext Result.failure(Exception("Could not access backup folder"))
+            val folderResult = getOrCreateFolder(token)
+            val folderId = folderResult.folderId
+                ?: return@withContext Result.failure(Exception(folderResult.error ?: "Could not access backup folder"))
 
             val query = "'$folderId' in parents and trashed=false"
             val fields = "files(id,name,size,createdTime,appProperties)"
