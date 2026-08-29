@@ -772,20 +772,21 @@ fun BackupSyncScreen(
     // Client ID setup dialog
     if (showClientIdDialog) {
         var clientIdInput by remember { mutableStateOf(viewModel.getCustomClientId()) }
+        var clientSecretInput by remember { mutableStateOf(viewModel.getCustomClientSecret()) }
 
         AlertDialog(
             onDismissRequest = { showClientIdDialog = false },
             title = {
-                Text("Google OAuth Client ID", fontWeight = FontWeight.Bold, color = TextPrimary)
+                Text("Google OAuth Credentials", fontWeight = FontWeight.Bold, color = TextPrimary)
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        "To use Google Drive backup, you need an OAuth Client ID from Google Cloud Console.",
+                        "To use Google Drive backup, you need OAuth credentials from Google Cloud Console.",
                         color = TextSecondary, fontSize = 13.sp, lineHeight = 18.sp
                     )
                     Text(
-                        "Steps:\n1. Go to console.cloud.google.com\n2. Create a project & enable Google Drive API\n3. Go to Credentials > Create OAuth Client ID\n4. Choose \"Desktop app\" type\n5. Paste the Client ID below",
+                        "Steps:\n1. Go to console.cloud.google.com\n2. Create a project & enable Google Drive API\n3. Go to Credentials > Create OAuth Client ID\n4. Choose \"Desktop app\" type\n5. Copy the Client ID and Client Secret below",
                         color = TextMuted, fontSize = 12.sp, lineHeight = 17.sp
                     )
                     OutlinedTextField(
@@ -807,12 +808,31 @@ fun BackupSyncScreen(
                         ),
                         shape = RoundedCornerShape(12.dp)
                     )
+                    OutlinedTextField(
+                        value = clientSecretInput,
+                        onValueChange = { clientSecretInput = it },
+                        label = { Text("Client Secret", color = TextMuted) },
+                        placeholder = { Text("GOCSPX-...", color = TextDisabled, fontSize = 12.sp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            cursorColor = BankAccent,
+                            focusedBorderColor = BankAccent,
+                            unfocusedBorderColor = CardBorder,
+                            focusedLabelColor = BankAccent,
+                            unfocusedLabelColor = TextMuted
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
                         viewModel.setCustomClientId(clientIdInput)
+                        viewModel.setCustomClientSecret(clientSecretInput)
                         showClientIdDialog = false
                     },
                     enabled = clientIdInput.trim().contains(".apps.googleusercontent.com"),

@@ -93,6 +93,10 @@ class BackupPreferences(context: Context) {
         get() = prefs.getString(KEY_CUSTOM_CLIENT_ID, "") ?: ""
         set(value) = prefs.edit().putString(KEY_CUSTOM_CLIENT_ID, value).apply()
 
+    var customClientSecret: String
+        get() = encryptedPrefs.getString(KEY_CUSTOM_CLIENT_SECRET, "") ?: ""
+        set(value) = encryptedPrefs.edit().putString(KEY_CUSTOM_CLIENT_SECRET, value).apply()
+
     var oauthRedirectUri: String
         get() = encryptedPrefs.getString(KEY_OAUTH_REDIRECT_URI, "") ?: ""
         set(value) = encryptedPrefs.edit().putString(KEY_OAUTH_REDIRECT_URI, value).apply()
@@ -151,7 +155,8 @@ class BackupPreferences(context: Context) {
         private const val KEY_CONNECTED_EMAIL     = "connected_email"
         private const val KEY_CONNECTED_NAME      = "connected_name"
         private const val KEY_IS_CONNECTED        = "is_connected"
-        private const val KEY_CUSTOM_CLIENT_ID    = "custom_client_id"
+        private const val KEY_CUSTOM_CLIENT_ID     = "custom_client_id"
+        private const val KEY_CUSTOM_CLIENT_SECRET = "custom_client_secret"
         private const val KEY_OAUTH_REDIRECT_URI  = "oauth_redirect_uri"
         private const val KEY_AUTO_BACKUP_ENABLED = "auto_backup_enabled"
         private const val KEY_FREQUENCY           = "backup_frequency"
