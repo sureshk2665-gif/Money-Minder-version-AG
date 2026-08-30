@@ -139,7 +139,7 @@ fun MonthYearPickerDialog(
                             modifier = Modifier
                                 .height(44.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) TextPrimary else CardBackgroundElevated)
+                                .background(if (isSelected) CardBackgroundElevated else CardBackgroundElevated)
                                 .border(
                                     width = 1.dp,
                                     color = if (isSelected) TextPrimary else CardBorder,
@@ -152,7 +152,7 @@ fun MonthYearPickerDialog(
                                 text = name,
                                 style = MaterialTheme.typography.labelMedium.copy(
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) Color.Black else TextSecondary,
+                                    color = if (isSelected) TextPrimary else TextSecondary,
                                     fontSize = 13.sp
                                 )
                             )

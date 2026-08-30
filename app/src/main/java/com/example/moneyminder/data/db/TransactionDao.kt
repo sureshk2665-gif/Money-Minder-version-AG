@@ -6,9 +6,11 @@ import android.database.Cursor
 import com.example.moneyminder.data.model.AccountBalances
 import com.example.moneyminder.data.model.AccountMovement
 import com.example.moneyminder.data.model.AccountType
+import com.example.moneyminder.data.model.BudgetItem
 import com.example.moneyminder.data.model.CategoryEntity
 import com.example.moneyminder.data.model.CategorySpending
 import com.example.moneyminder.data.model.DaySummary
+import com.example.moneyminder.data.model.LentReturnItem
 import com.example.moneyminder.data.model.MonthlySummary
 import com.example.moneyminder.data.model.TransactionEntity
 import com.example.moneyminder.data.model.TransactionType
@@ -708,6 +710,184 @@ class TransactionDao(context: Context) {
         } finally {
             db.endTransaction()
         }
+        notifyDataChanged()
+    }
+
+    // ─── Salary Budget ───
+
+    @Synchronized
+    fun getSalary(year: Int, month: Int): Double {
+        val db = dbHelper.readableDatabase
+        val cursor = db.query(
+            MoneyMinderDatabaseHelper.TABLE_SALARY,
+            arrayOf(MoneyMinderDatabaseHelper.COL_SAL_AMOUNT),
+            "${MoneyMinderDatabaseHelper.COL_SAL_YEAR} = ? AND ${MoneyMinderDatabaseHelper.COL_SAL_MONTH} = ?",
+            arrayOf(year.toString(), month.toString()),
+            null, null, null
+        )
+        cursor.use { c ->
+            if (c.moveToFirst()) return c.getDouble(0)
+        }
+        return 0.0
+    }
+
+    @Synchronized
+    fun setSalary(year: Int, month: Int, amount: Double) {
+        val db = dbHelper.writableDatabase
+        val values = ContentValues().apply {
+            put(MoneyMinderDatabaseHelper.COL_SAL_AMOUNT, amount)
+            put(MoneyMinderDatabaseHelper.COL_SAL_YEAR, year)
+            put(MoneyMinderDatabaseHelper.COL_SAL_MONTH, month)
+        }
+        db.insertWithOnConflict(
+            MoneyMinderDatabaseHelper.TABLE_SALARY,
+            null, values,
+            android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE
+        )
+        notifyDataChanged()
+    }
+
+    @Synchronized
+    fun getBudgetItems(year: Int, month: Int): List<BudgetItem> {
+        val db = dbHelper.readableDatabase
+        val cursor = db.query(
+            MoneyMinderDatabaseHelper.TABLE_BUDGET_ITEMS,
+            null,
+            "${MoneyMinderDatabaseHelper.COL_BUDGET_YEAR} = ? AND ${MoneyMinderDatabaseHelper.COL_BUDGET_MONTH} = ?",
+            arrayOf(year.toString(), month.toString()),
+            null, null,
+            "${MoneyMinderDatabaseHelper.COL_BUDGET_CREATED} ASC"
+        )
+        val list = mutableListOf<BudgetItem>()
+        cursor.use { c ->
+            while (c.moveToNext()) {
+                list.add(BudgetItem(
+                    id = c.getLong(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_BUDGET_ID)),
+                    purpose = c.getString(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_BUDGET_PURPOSE)),
+                    amount = c.getDouble(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_BUDGET_AMOUNT)),
+                    isDone = c.getInt(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_BUDGET_IS_DONE)) == 1,
+                    year = c.getInt(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_BUDGET_YEAR)),
+                    month = c.getInt(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_BUDGET_MONTH)),
+                    createdAt = c.getLong(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_BUDGET_CREATED))
+                ))
+            }
+        }
+        return list
+    }
+
+    @Synchronized
+    fun insertBudgetItem(item: BudgetItem): Long {
+        val db = dbHelper.writableDatabase
+        val values = ContentValues().apply {
+            put(MoneyMinderDatabaseHelper.COL_BUDGET_PURPOSE, item.purpose)
+            put(MoneyMinderDatabaseHelper.COL_BUDGET_AMOUNT, item.amount)
+            put(MoneyMinderDatabaseHelper.COL_BUDGET_IS_DONE, if (item.isDone) 1 else 0)
+            put(MoneyMinderDatabaseHelper.COL_BUDGET_YEAR, item.year)
+            put(MoneyMinderDatabaseHelper.COL_BUDGET_MONTH, item.month)
+            put(MoneyMinderDatabaseHelper.COL_BUDGET_CREATED, item.createdAt)
+        }
+        val id = db.insert(MoneyMinderDatabaseHelper.TABLE_BUDGET_ITEMS, null, values)
+        notifyDataChanged()
+        return id
+    }
+
+    @Synchronized
+    fun toggleBudgetItemDone(id: Long, isDone: Boolean) {
+        val db = dbHelper.writableDatabase
+        val values = ContentValues().apply {
+            put(MoneyMinderDatabaseHelper.COL_BUDGET_IS_DONE, if (isDone) 1 else 0)
+        }
+        db.update(
+            MoneyMinderDatabaseHelper.TABLE_BUDGET_ITEMS,
+            values,
+            "${MoneyMinderDatabaseHelper.COL_BUDGET_ID} = ?",
+            arrayOf(id.toString())
+        )
+        notifyDataChanged()
+    }
+
+    @Synchronized
+    fun deleteBudgetItem(id: Long) {
+        val db = dbHelper.writableDatabase
+        db.delete(
+            MoneyMinderDatabaseHelper.TABLE_BUDGET_ITEMS,
+            "${MoneyMinderDatabaseHelper.COL_BUDGET_ID} = ?",
+            arrayOf(id.toString())
+        )
+        notifyDataChanged()
+    }
+
+    // ─── Lent & Returns ───
+
+    @Synchronized
+    fun getLentReturnItems(year: Int, month: Int): List<LentReturnItem> {
+        val db = dbHelper.readableDatabase
+        val cursor = db.query(
+            MoneyMinderDatabaseHelper.TABLE_LENT_RETURN,
+            null,
+            "${MoneyMinderDatabaseHelper.COL_LR_YEAR} = ? AND ${MoneyMinderDatabaseHelper.COL_LR_MONTH} = ?",
+            arrayOf(year.toString(), month.toString()),
+            null, null,
+            "${MoneyMinderDatabaseHelper.COL_LR_CREATED} ASC"
+        )
+        val list = mutableListOf<LentReturnItem>()
+        cursor.use { c ->
+            while (c.moveToNext()) {
+                list.add(LentReturnItem(
+                    id = c.getLong(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_ID)),
+                    personName = c.getString(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_NAME)),
+                    amount = c.getDouble(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_AMOUNT)),
+                    type = c.getString(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_TYPE)),
+                    isReturned = c.getInt(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_IS_RETURNED)) == 1,
+                    year = c.getInt(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_YEAR)),
+                    month = c.getInt(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_MONTH)),
+                    createdAt = c.getLong(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_CREATED))
+                ))
+            }
+        }
+        return list
+    }
+
+    @Synchronized
+    fun insertLentReturnItem(item: LentReturnItem): Long {
+        val db = dbHelper.writableDatabase
+        val values = ContentValues().apply {
+            put(MoneyMinderDatabaseHelper.COL_LR_NAME, item.personName)
+            put(MoneyMinderDatabaseHelper.COL_LR_AMOUNT, item.amount)
+            put(MoneyMinderDatabaseHelper.COL_LR_TYPE, item.type)
+            put(MoneyMinderDatabaseHelper.COL_LR_IS_RETURNED, if (item.isReturned) 1 else 0)
+            put(MoneyMinderDatabaseHelper.COL_LR_YEAR, item.year)
+            put(MoneyMinderDatabaseHelper.COL_LR_MONTH, item.month)
+            put(MoneyMinderDatabaseHelper.COL_LR_CREATED, item.createdAt)
+        }
+        val id = db.insert(MoneyMinderDatabaseHelper.TABLE_LENT_RETURN, null, values)
+        notifyDataChanged()
+        return id
+    }
+
+    @Synchronized
+    fun toggleLentReturnDone(id: Long, isReturned: Boolean) {
+        val db = dbHelper.writableDatabase
+        val values = ContentValues().apply {
+            put(MoneyMinderDatabaseHelper.COL_LR_IS_RETURNED, if (isReturned) 1 else 0)
+        }
+        db.update(
+            MoneyMinderDatabaseHelper.TABLE_LENT_RETURN,
+            values,
+            "${MoneyMinderDatabaseHelper.COL_LR_ID} = ?",
+            arrayOf(id.toString())
+        )
+        notifyDataChanged()
+    }
+
+    @Synchronized
+    fun deleteLentReturnItem(id: Long) {
+        val db = dbHelper.writableDatabase
+        db.delete(
+            MoneyMinderDatabaseHelper.TABLE_LENT_RETURN,
+            "${MoneyMinderDatabaseHelper.COL_LR_ID} = ?",
+            arrayOf(id.toString())
+        )
         notifyDataChanged()
     }
 

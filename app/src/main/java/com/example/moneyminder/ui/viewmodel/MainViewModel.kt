@@ -16,7 +16,9 @@ import com.example.moneyminder.data.model.CategoryEntity
 import com.example.moneyminder.data.model.CategorySpending
 import com.example.moneyminder.data.model.DaySummary
 import com.example.moneyminder.data.model.ImportItem
+import com.example.moneyminder.data.model.BudgetItem
 import com.example.moneyminder.data.model.InboxSmsMessage
+import com.example.moneyminder.data.model.LentReturnItem
 import com.example.moneyminder.data.model.MonthlySummary
 import com.example.moneyminder.data.model.SmsCandidate
 import com.example.moneyminder.data.model.TransactionEntity
@@ -478,6 +480,96 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             PdfExporter.exportToPdf(context, allTx, bal)
         } else {
             ExcelExporter.exportToExcel(context, allTx, bal)
+        }
+    }
+
+    // ─── Budget ───
+
+    private val _salary = MutableStateFlow(0.0)
+    val salary: StateFlow<Double> = _salary.asStateFlow()
+
+    private val _budgetItems = MutableStateFlow<List<BudgetItem>>(emptyList())
+    val budgetItems: StateFlow<List<BudgetItem>> = _budgetItems.asStateFlow()
+
+    private val _lentReturnItems = MutableStateFlow<List<LentReturnItem>>(emptyList())
+    val lentReturnItems: StateFlow<List<LentReturnItem>> = _lentReturnItems.asStateFlow()
+
+    fun loadBudgetData() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val year = _selectedYear.value
+            val month = _selectedMonth.value
+            val sal = dao.getSalary(year, month)
+            val items = dao.getBudgetItems(year, month)
+            val lrItems = dao.getLentReturnItems(year, month)
+            withContext(Dispatchers.Main) {
+                _salary.value = sal
+                _budgetItems.value = items
+                _lentReturnItems.value = lrItems
+            }
+        }
+    }
+
+    fun setSalary(amount: Double) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.setSalary(_selectedYear.value, _selectedMonth.value, amount)
+            withContext(Dispatchers.Main) {
+                _salary.value = amount
+            }
+        }
+    }
+
+    fun addBudgetItem(purpose: String, amount: Double) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val item = BudgetItem(
+                purpose = purpose,
+                amount = amount,
+                year = _selectedYear.value,
+                month = _selectedMonth.value
+            )
+            dao.insertBudgetItem(item)
+            loadBudgetData()
+        }
+    }
+
+    fun toggleBudgetDone(id: Long, isDone: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.toggleBudgetItemDone(id, isDone)
+            loadBudgetData()
+        }
+    }
+
+    fun removeBudgetItem(id: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.deleteBudgetItem(id)
+            loadBudgetData()
+        }
+    }
+
+    fun addLentReturnItem(name: String, amount: Double, type: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val item = LentReturnItem(
+                personName = name,
+                amount = amount,
+                type = type,
+                year = _selectedYear.value,
+                month = _selectedMonth.value
+            )
+            dao.insertLentReturnItem(item)
+            loadBudgetData()
+        }
+    }
+
+    fun toggleLentReturnDone(id: Long, isReturned: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.toggleLentReturnDone(id, isReturned)
+            loadBudgetData()
+        }
+    }
+
+    fun removeLentReturnItem(id: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.deleteLentReturnItem(id)
+            loadBudgetData()
         }
     }
 

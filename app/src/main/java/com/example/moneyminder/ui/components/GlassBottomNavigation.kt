@@ -26,7 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material3.Icon
@@ -64,7 +64,7 @@ val navTabs = listOf(
     NavTabItem("Home", Icons.Default.Home),
     NavTabItem("Insights", Icons.Default.Analytics),
     NavTabItem("Add", Icons.Default.Add, isCenterAdd = true),
-    NavTabItem("Calendar", Icons.Default.CalendarMonth),
+    NavTabItem("Budget", Icons.Default.AccountBalanceWallet),
     NavTabItem("SMS", Icons.Default.Sms)
 )
 

@@ -83,6 +83,27 @@ data class InboxSmsMessage(
     val duplicateReason: String? = null
 )
 
+data class BudgetItem(
+    val id: Long = 0,
+    val purpose: String,
+    val amount: Double,
+    val isDone: Boolean = false,
+    val year: Int,
+    val month: Int,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+data class LentReturnItem(
+    val id: Long = 0,
+    val personName: String,
+    val amount: Double,
+    val type: String, // "LENT" or "RETURN"
+    val isReturned: Boolean = false,
+    val year: Int,
+    val month: Int,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
 data class ImportItem(
     val id: String = java.util.UUID.randomUUID().toString(),
     val type: TransactionType,
