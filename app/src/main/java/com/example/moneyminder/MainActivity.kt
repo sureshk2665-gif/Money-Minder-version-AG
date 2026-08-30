@@ -1,21 +1,28 @@
 package com.example.moneyminder
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +34,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -44,15 +52,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.example.moneyminder.data.model.AccountType
 import com.example.moneyminder.data.model.TransactionType
@@ -155,6 +167,28 @@ fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
 
     var showExportDialog by remember { mutableStateOf(false) }
 
+    // Back press to exit
+    var lastBackPressTime by remember { mutableLongStateOf(0L) }
+    var showExitToast by remember { mutableStateOf(false) }
+    val activity = context as? Activity
+
+    BackHandler {
+        val now = System.currentTimeMillis()
+        if (now - lastBackPressTime < 2000) {
+            activity?.finish()
+        } else {
+            lastBackPressTime = now
+            showExitToast = true
+        }
+    }
+
+    LaunchedEffect(showExitToast) {
+        if (showExitToast) {
+            kotlinx.coroutines.delay(2000)
+            showExitToast = false
+        }
+    }
+
     // File picker launcher for Excel/PDF import
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -209,52 +243,89 @@ fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = BackgroundDark,
-        bottomBar = {
-            GlassBottomNavigation(
-                selectedTab = selectedTab,
-                onTabSelected = { tabIndex ->
-                    viewModel.setSelectedTab(tabIndex)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = BackgroundDark,
+            bottomBar = {
+                GlassBottomNavigation(
+                    selectedTab = selectedTab,
+                    onTabSelected = { tabIndex ->
+                        viewModel.setSelectedTab(tabIndex)
+                    }
+                )
+            }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                AnimatedContent(
+                    targetState = selectedTab,
+                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    label = "tabContent"
+                ) { tab ->
+                    when (tab) {
+                        0 -> HomeScreen(
+                            viewModel = viewModel,
+                            onNavigateToAdd = { type ->
+                                viewModel.setPendingTransactionType(type)
+                                viewModel.setSelectedTab(2)
+                            },
+                            onOpenExport = { showExportDialog = true }
+                        )
+                        1 -> InsightsScreen(
+                            viewModel = viewModel,
+                            onNavigateToAdd = { viewModel.setSelectedTab(2) }
+                        )
+                        2 -> AddTransactionScreen(
+                            viewModel = viewModel,
+                            onCancel = { viewModel.setSelectedTab(0) }
+                        )
+                        3 -> BudgetScreen(
+                            viewModel = viewModel
+                        )
+                        4 -> SmsReviewTabContent(
+                            viewModel = viewModel
+                        )
+                    }
                 }
-            )
+            }
         }
-    ) { innerPadding ->
-        Box(
+
+        // Floating "Press again to exit" notification
+        AnimatedVisibility(
+            visible = showExitToast,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 100.dp)
         ) {
-            AnimatedContent(
-                targetState = selectedTab,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "tabContent"
-            ) { tab ->
-                when (tab) {
-                    0 -> HomeScreen(
-                        viewModel = viewModel,
-                        onNavigateToAdd = { type ->
-                            viewModel.setPendingTransactionType(type)
-                            viewModel.setSelectedTab(2)
-                        },
-                        onOpenExport = { showExportDialog = true }
-                    )
-                    1 -> InsightsScreen(
-                        viewModel = viewModel,
-                        onNavigateToAdd = { viewModel.setSelectedTab(2) }
-                    )
-                    2 -> AddTransactionScreen(
-                        viewModel = viewModel,
-                        onCancel = { viewModel.setSelectedTab(0) }
-                    )
-                    3 -> BudgetScreen(
-                        viewModel = viewModel
-                    )
-                    4 -> SmsReviewTabContent(
-                        viewModel = viewModel
-                    )
-                }
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Color(0xF01E1E26))
+                    .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(50.dp))
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.logo_money_minder),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Press again to exit",
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }
