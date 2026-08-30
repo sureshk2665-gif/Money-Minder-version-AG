@@ -66,7 +66,7 @@ import com.example.moneyminder.ui.components.GlassBottomNavigation
 import com.example.moneyminder.ui.components.MonthYearPickerDialog
 import com.example.moneyminder.ui.screens.AccountDetailDialog
 import com.example.moneyminder.ui.screens.AddTransactionScreen
-import com.example.moneyminder.ui.screens.CalendarScreen
+import com.example.moneyminder.ui.screens.BudgetScreen
 import com.example.moneyminder.ui.screens.HomeScreen
 import com.example.moneyminder.ui.screens.ImportReviewScreen
 import com.example.moneyminder.ui.screens.InsightsScreen
@@ -241,17 +241,15 @@ fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
                         onOpenExport = { showExportDialog = true }
                     )
                     1 -> InsightsScreen(
-                        viewModel = viewModel
+                        viewModel = viewModel,
+                        onNavigateToAdd = { viewModel.setSelectedTab(2) }
                     )
                     2 -> AddTransactionScreen(
                         viewModel = viewModel,
                         onCancel = { viewModel.setSelectedTab(0) }
                     )
-                    3 -> CalendarScreen(
-                        viewModel = viewModel,
-                        onNavigateToAdd = { timestamp ->
-                            viewModel.setSelectedTab(2)
-                        }
+                    3 -> BudgetScreen(
+                        viewModel = viewModel
                     )
                     4 -> SmsReviewTabContent(
                         viewModel = viewModel

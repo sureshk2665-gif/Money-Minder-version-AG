@@ -12,7 +12,7 @@ class MoneyMinderDatabaseHelper(context: Context) : SQLiteOpenHelper(
 ) {
     companion object {
         const val DATABASE_NAME = "moneyminder.db"
-        const val DATABASE_VERSION = 1
+        const val DATABASE_VERSION = 2
 
         const val TABLE_TRANSACTIONS = "transactions"
         const val COL_ID = "id"
@@ -32,6 +32,32 @@ class MoneyMinderDatabaseHelper(context: Context) : SQLiteOpenHelper(
         const val COL_CAT_TYPE = "type"
         const val COL_CAT_USAGE_COUNT = "usage_count"
         const val COL_CAT_LAST_USED = "last_used_timestamp"
+
+        const val TABLE_BUDGET_ITEMS = "budget_items"
+        const val COL_BUDGET_ID = "id"
+        const val COL_BUDGET_SALARY = "salary"
+        const val COL_BUDGET_PURPOSE = "purpose"
+        const val COL_BUDGET_AMOUNT = "amount"
+        const val COL_BUDGET_IS_DONE = "is_done"
+        const val COL_BUDGET_YEAR = "year"
+        const val COL_BUDGET_MONTH = "month"
+        const val COL_BUDGET_CREATED = "created_at"
+
+        const val TABLE_LENT_RETURN = "lent_return"
+        const val COL_LR_ID = "id"
+        const val COL_LR_NAME = "person_name"
+        const val COL_LR_AMOUNT = "amount"
+        const val COL_LR_TYPE = "type"
+        const val COL_LR_IS_RETURNED = "is_returned"
+        const val COL_LR_YEAR = "year"
+        const val COL_LR_MONTH = "month"
+        const val COL_LR_CREATED = "created_at"
+
+        const val TABLE_SALARY = "salary"
+        const val COL_SAL_ID = "id"
+        const val COL_SAL_AMOUNT = "amount"
+        const val COL_SAL_YEAR = "year"
+        const val COL_SAL_MONTH = "month"
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -61,18 +87,54 @@ class MoneyMinderDatabaseHelper(context: Context) : SQLiteOpenHelper(
             )
         """.trimIndent()
 
-        val createIndexes = """
-            CREATE INDEX idx_trans_time ON $TABLE_TRANSACTIONS ($COL_TIMESTAMP);
-            CREATE INDEX idx_trans_ref ON $TABLE_TRANSACTIONS ($COL_REF_NUMBER);
-        """.trimIndent()
-
         db.execSQL(createTransactionsTable)
         db.execSQL(createCategoriesTable)
         db.execSQL("CREATE INDEX idx_trans_time ON $TABLE_TRANSACTIONS ($COL_TIMESTAMP)")
         db.execSQL("CREATE INDEX idx_trans_ref ON $TABLE_TRANSACTIONS ($COL_REF_NUMBER)")
+
+        createBudgetTables(db)
+    }
+
+    private fun createBudgetTables(db: SQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS $TABLE_BUDGET_ITEMS (
+                $COL_BUDGET_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                $COL_BUDGET_PURPOSE TEXT NOT NULL,
+                $COL_BUDGET_AMOUNT REAL NOT NULL,
+                $COL_BUDGET_IS_DONE INTEGER DEFAULT 0,
+                $COL_BUDGET_YEAR INTEGER NOT NULL,
+                $COL_BUDGET_MONTH INTEGER NOT NULL,
+                $COL_BUDGET_CREATED INTEGER NOT NULL
+            )
+        """.trimIndent())
+
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS $TABLE_LENT_RETURN (
+                $COL_LR_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                $COL_LR_NAME TEXT NOT NULL,
+                $COL_LR_AMOUNT REAL NOT NULL,
+                $COL_LR_TYPE TEXT NOT NULL,
+                $COL_LR_IS_RETURNED INTEGER DEFAULT 0,
+                $COL_LR_YEAR INTEGER NOT NULL,
+                $COL_LR_MONTH INTEGER NOT NULL,
+                $COL_LR_CREATED INTEGER NOT NULL
+            )
+        """.trimIndent())
+
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS $TABLE_SALARY (
+                $COL_SAL_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                $COL_SAL_AMOUNT REAL NOT NULL,
+                $COL_SAL_YEAR INTEGER NOT NULL,
+                $COL_SAL_MONTH INTEGER NOT NULL,
+                UNIQUE($COL_SAL_YEAR, $COL_SAL_MONTH)
+            )
+        """.trimIndent())
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        // Future migrations
+        if (oldVersion < 2) {
+            createBudgetTables(db)
+        }
     }
 }
