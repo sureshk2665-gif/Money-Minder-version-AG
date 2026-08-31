@@ -42,10 +42,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val dao = TransactionDao(application)
     val smsBlockPrefs = SmsBlockPreferences(application)
 
-    init {
-        _blockedSmsSenders.value = smsBlockPrefs.getBlockedSenders()
-    }
-
     // Current navigation tab: 0=Home, 1=Insights, 2=Add, 3=Calendar, 4=SMS
     private val _selectedTab = MutableStateFlow(0)
     val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
@@ -93,7 +89,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _smsPermissionGranted = MutableStateFlow(false)
     val smsPermissionGranted: StateFlow<Boolean> = _smsPermissionGranted.asStateFlow()
 
-    private val _blockedSmsSenders = MutableStateFlow<Set<String>>(emptySet())
+    private val _blockedSmsSenders = MutableStateFlow(smsBlockPrefs.getBlockedSenders())
     val blockedSmsSenders: StateFlow<Set<String>> = _blockedSmsSenders.asStateFlow()
 
     // Pre-filled Transaction data for Add Screen (e.g. from SMS or duplicate)
