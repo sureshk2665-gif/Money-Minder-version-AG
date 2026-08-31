@@ -63,8 +63,6 @@ import com.example.moneyminder.theme.CardBorder
 import com.example.moneyminder.theme.CardBorderSubtle
 import com.example.moneyminder.theme.ExpenseCardBg
 import com.example.moneyminder.theme.ExpenseRed
-import com.example.moneyminder.theme.TextDisabled
-import com.example.moneyminder.theme.TextMuted
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
 import com.example.moneyminder.theme.TransferBlueGrey
@@ -365,7 +363,7 @@ private fun SettingsSectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.labelSmall.copy(
-            color = TextMuted,
+            color = TextSecondary,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp
         )
@@ -439,7 +437,7 @@ private fun SettingsItemCard(
                     Text(
                         text = badge,
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextMuted,
+                            color = TextSecondary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
