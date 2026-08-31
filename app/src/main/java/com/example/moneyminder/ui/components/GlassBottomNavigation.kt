@@ -158,7 +158,7 @@ fun GlassBottomNavigation(
                     )
 
                     val iconAlpha by animateFloatAsState(
-                        targetValue = if (isSelected) 1f else 0.5f,
+                        targetValue = if (isSelected) 1f else 0.75f,
                         animationSpec = spring(stiffness = Spring.StiffnessLow),
                         label = "iconAlpha"
                     )
@@ -220,7 +220,7 @@ fun GlassBottomNavigation(
                                 Icon(
                                     imageVector = tab.icon,
                                     contentDescription = tab.title,
-                                    tint = if (isSelected) TextPrimary else TextMuted,
+                                    tint = if (isSelected) TextPrimary else TextSecondary,
                                     modifier = Modifier.size(23.dp)
                                 )
                                 Spacer(modifier = Modifier.height(3.dp))
@@ -229,7 +229,7 @@ fun GlassBottomNavigation(
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontSize = 10.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) TextPrimary else TextMuted
+                                        color = if (isSelected) TextPrimary else TextSecondary
                                     )
                                 )
                             }
