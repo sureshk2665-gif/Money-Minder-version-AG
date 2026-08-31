@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
@@ -49,16 +48,11 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -76,7 +70,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import com.example.moneyminder.data.model.InboxSmsMessage
-import com.example.moneyminder.data.model.SmsCandidate
 import com.example.moneyminder.data.model.TransactionType
 import com.example.moneyminder.theme.BackgroundDark
 import com.example.moneyminder.theme.BankAccent
@@ -102,8 +95,6 @@ fun SmsReviewScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Inbox Sync", "Paste SMS")
     var showBlockedSendersDialog by remember { mutableStateOf(false) }
 
     Column(
@@ -142,7 +133,7 @@ fun SmsReviewScreen(
                     )
                 )
                 Text(
-                    text = "Sync from inbox or paste manually",
+                    text = "Sync from inbox automatically",
                     style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                 )
             }
@@ -177,45 +168,12 @@ fun SmsReviewScreen(
             }
         }
 
-        // Tab bar
-        TabRow(
-            selectedTabIndex = selectedTab,
-            containerColor = BackgroundDark,
-            contentColor = TextPrimary,
-            indicator = { tabPositions ->
-                TabRowDefaults.SecondaryIndicator(
-                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                    color = TextPrimary,
-                    height = 2.dp
-                )
-            },
-            divider = {}
-        ) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index },
-                    text = {
-                        Text(
-                            title,
-                            fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selectedTab == index) TextPrimary else TextSecondary,
-                            fontSize = 13.sp
-                        )
-                    }
-                )
+        InboxSyncContent(
+            viewModel = viewModel,
+            onBlockSender = { senderName ->
+                viewModel.blockSmsSender(senderName)
             }
-        }
-
-        when (selectedTab) {
-            0 -> InboxSyncContent(
-                viewModel = viewModel,
-                onBlockSender = { senderName ->
-                    viewModel.blockSmsSender(senderName)
-                }
-            )
-            1 -> PasteSmsContent(viewModel = viewModel)
-        }
+        )
     }
 
     if (showBlockedSendersDialog) {
@@ -648,186 +606,6 @@ private fun SmsInboxItem(
                         onBlockSender()
                     }
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PasteSmsContent(viewModel: MainViewModel) {
-    var pastedText by remember { mutableStateOf("") }
-    val candidates by viewModel.smsCandidates.collectAsState()
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        if (candidates.isEmpty()) {
-            OutlinedTextField(
-                value = pastedText,
-                onValueChange = { pastedText = it },
-                placeholder = {
-                    Text(
-                        text = "Paste one or more transaction SMS messages here...\n\nExample:\nUnion Bank of India A/c *0531 Debited Rs:349.00 on 25-08-2026 10:00:38 by Mob Bk ref no 214034114011, Fvg: Airtel Avl Bal Rs:24163.65.",
-                        color = TextSecondary,
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp
-                    )
-                },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = TextPrimary,
-                    unfocusedBorderColor = CardBorder,
-                    focusedContainerColor = CardBackgroundElevated,
-                    unfocusedContainerColor = CardBackgroundElevated,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
-                ),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Button(
-                onClick = {
-                    if (pastedText.isNotBlank()) {
-                        viewModel.parsePastedSms(pastedText)
-                    }
-                },
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = TextPrimary,
-                    contentColor = Color.Black
-                ),
-                enabled = pastedText.isNotBlank(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-            ) {
-                Icon(Icons.Default.ContentPaste, null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Review SMS", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            }
-        } else {
-            Text(
-                text = "Tap a transaction below to pre-fill the Add screen:",
-                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(candidates) { candidate ->
-                    PastedSmsCard(
-                        candidate = candidate,
-                        onClick = { viewModel.useSmsCandidateToAdd(candidate) }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedButton(
-                onClick = {
-                    viewModel.clearSmsCandidates()
-                    pastedText = ""
-                },
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(46.dp)
-            ) {
-                Text("Paste Another SMS", fontWeight = FontWeight.SemiBold)
-            }
-        }
-    }
-}
-
-@Composable
-private fun PastedSmsCard(
-    candidate: SmsCandidate,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(CardBackgroundElevated)
-            .border(
-                1.dp,
-                if (candidate.isDuplicate) IncomeGreen.copy(alpha = 0.4f) else CardBorder,
-                RoundedCornerShape(16.dp)
-            )
-            .clickable(enabled = !candidate.isDuplicate) { onClick() }
-            .padding(14.dp)
-    ) {
-        Column {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = candidate.suggestedCategory,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = if (candidate.isDuplicate) TextSecondary else TextPrimary
-                    ),
-                    maxLines = 1,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = if (candidate.type == TransactionType.INCOME)
-                        "+ ${CurrencyFormatter.format(candidate.amount)}"
-                    else
-                        "- ${CurrencyFormatter.format(candidate.amount)}",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = if (candidate.isDuplicate) TextSecondary
-                        else if (candidate.type == TransactionType.INCOME) IncomeGreen
-                        else ExpenseRed
-                    )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            val accLabel = if (candidate.type == TransactionType.EXPENSE)
-                "Paid from ${candidate.suggestedAccount.displayName}"
-            else
-                "Received in ${candidate.suggestedAccount.displayName}"
-            Text(
-                text = "$accLabel  |  ${DateTimeUtils.formatDateTime(candidate.timestamp)}",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = TextSecondary, fontSize = 11.5.sp
-                )
-            )
-
-            if (candidate.isDuplicate) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        tint = IncomeGreen,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = candidate.duplicateReason ?: "Already imported",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = IncomeGreen,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    )
-                }
             }
         }
     }
