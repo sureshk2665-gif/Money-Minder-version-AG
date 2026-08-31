@@ -67,7 +67,6 @@ import com.example.moneyminder.theme.CardBorder
 import com.example.moneyminder.theme.CardBorderSubtle
 import com.example.moneyminder.theme.ExpenseRed
 import com.example.moneyminder.theme.IncomeGreen
-import com.example.moneyminder.theme.TextMuted
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
 import com.example.moneyminder.theme.TransferBlueGrey
@@ -210,7 +209,7 @@ fun InsightsScreen(
                             text = if (acc == AccountType.OVERALL) "All" else acc.displayName.take(1),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) TextPrimary else TextMuted,
+                                color = if (isSelected) TextPrimary else TextSecondary,
                                 fontSize = 10.sp
                             )
                         )
@@ -423,7 +422,7 @@ fun InsightsScreen(
                     if (day.transactions.isEmpty()) {
                         Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("No records on this day", style = MaterialTheme.typography.bodyMedium.copy(color = TextMuted))
+                                Text("No records on this day", style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary))
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Button(
                                     onClick = {
@@ -486,7 +485,7 @@ private fun SummaryPill(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(label, style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 10.sp))
+            Text(label, style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary, fontSize = 10.sp))
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = value,
@@ -538,7 +537,7 @@ private fun OverviewContent(
                         )
                         Text(
                             text = "Self-transfers excluded",
-                            style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 10.5.sp)
+                            style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary, fontSize = 10.5.sp)
                         )
                     }
                     Spacer(modifier = Modifier.height(10.dp))
@@ -604,7 +603,7 @@ private fun CalendarGridView(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             weekDays.forEach { w ->
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    Text(w, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = TextMuted, fontSize = 11.sp))
+                    Text(w, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = TextSecondary, fontSize = 11.sp))
                 }
             }
         }
@@ -644,7 +643,7 @@ private fun DayGridCell(daySummary: DaySummary, onClick: () -> Unit) {
                     text = daySummary.dayOfMonth.toString(),
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = if (hasTx) FontWeight.Bold else FontWeight.Normal,
-                        color = if (hasTx) TextPrimary else TextMuted,
+                        color = if (hasTx) TextPrimary else TextSecondary,
                         fontSize = 11.sp
                     )
                 )
@@ -718,7 +717,7 @@ private fun MonthlyBreakdownView(transactions: List<TransactionEntity>, onTransa
                             modifier = Modifier.fillMaxWidth().clickable { onTransactionClick(tx) }.padding(vertical = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(DateTimeUtils.formatDate(tx.timestamp), style = MaterialTheme.typography.bodySmall.copy(color = TextMuted))
+                            Text(DateTimeUtils.formatDate(tx.timestamp), style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary))
                             Text(
                                 CurrencyFormatter.format(tx.amount),
                                 style = MaterialTheme.typography.bodySmall.copy(
@@ -764,7 +763,7 @@ private fun TotalStatsView(monthlySummary: com.example.moneyminder.data.model.Mo
 private fun NotesJournalView(transactions: List<TransactionEntity>, onTransactionClick: (TransactionEntity) -> Unit) {
     if (transactions.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No notes found in transactions.", color = TextMuted)
+            Text("No notes found in transactions.", color = TextSecondary)
         }
     } else {
         LazyColumn(
@@ -780,7 +779,7 @@ private fun NotesJournalView(transactions: List<TransactionEntity>, onTransactio
                     Column {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(tx.category, fontWeight = FontWeight.Bold, color = TextPrimary)
-                            Text(DateTimeUtils.formatDate(tx.timestamp), style = MaterialTheme.typography.bodySmall.copy(color = TextMuted))
+                            Text(DateTimeUtils.formatDate(tx.timestamp), style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary))
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(tx.note, style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary))
@@ -811,7 +810,7 @@ private fun MetricCard(
     ) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text(title, style = MaterialTheme.typography.labelSmall.copy(color = TextMuted))
+                Text(title, style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary))
                 Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(16.dp))
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -858,7 +857,7 @@ private fun AccountMovementsCard(movements: List<com.example.moneyminder.data.mo
             }
             Spacer(modifier = Modifier.height(12.dp))
             if (movements.isEmpty()) {
-                Text("No transfers recorded this month.", style = MaterialTheme.typography.bodySmall.copy(color = TextMuted))
+                Text("No transfers recorded this month.", style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary))
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     movements.forEach { m ->

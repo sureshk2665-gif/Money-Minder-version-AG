@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.moneyminder.data.model.CategorySpending
 import com.example.moneyminder.theme.CardBackground
-import com.example.moneyminder.theme.TextMuted
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
 import com.example.moneyminder.util.CurrencyFormatter
@@ -131,7 +130,7 @@ fun DonutSpendingChart(
                 Text(
                     text = "Total Spending",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextMuted,
+                        color = TextSecondary,
                         fontSize = 11.sp
                     )
                 )

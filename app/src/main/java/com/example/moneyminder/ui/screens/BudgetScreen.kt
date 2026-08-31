@@ -60,8 +60,6 @@ import com.example.moneyminder.theme.CardBorderSubtle
 import com.example.moneyminder.theme.ExpenseRed
 import com.example.moneyminder.theme.IncomeGreen
 import com.example.moneyminder.theme.IncomeGreenDark
-import com.example.moneyminder.theme.TextDisabled
-import com.example.moneyminder.theme.TextMuted
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
 import com.example.moneyminder.theme.TransferBlueGrey
@@ -224,7 +222,7 @@ private fun SalaryBudgetSection(
                             fontWeight = FontWeight.Bold
                         ))
                     },
-                    placeholder = { Text("Enter salary", color = TextDisabled) },
+                    placeholder = { Text("Enter salary", color = TextSecondary) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = IncomeGreen,
@@ -286,7 +284,7 @@ private fun SalaryBudgetSection(
                     value = newPurpose,
                     onValueChange = { newPurpose = it },
                     singleLine = true,
-                    placeholder = { Text("Purpose", color = TextDisabled, fontSize = 13.sp) },
+                    placeholder = { Text("Purpose", color = TextSecondary, fontSize = 13.sp) },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = TextPrimary,
                         unfocusedBorderColor = CardBorderSubtle,
@@ -303,7 +301,7 @@ private fun SalaryBudgetSection(
                     onValueChange = { newAmount = it.filter { c -> c.isDigit() || c == '.' } },
                     singleLine = true,
                     prefix = { Text("₹", color = TextSecondary, fontSize = 13.sp) },
-                    placeholder = { Text("Amount", color = TextDisabled, fontSize = 13.sp) },
+                    placeholder = { Text("Amount", color = TextSecondary, fontSize = 13.sp) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = TextPrimary,
@@ -367,7 +365,7 @@ private fun SalaryBudgetSection(
                 ) {
                     Text(
                         text = "${budgetItems.size} planned items",
-                        style = MaterialTheme.typography.labelSmall.copy(color = TextMuted)
+                        style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary)
                     )
                     Text(
                         text = "Total: ₹${CurrencyFormatter.formatPlain(budgetItems.sumOf { it.amount })}",
@@ -511,7 +509,7 @@ private fun IncomesReturnsSection(
                 if (items.isNotEmpty()) {
                     Text(
                         text = "${items.size} entries",
-                        style = MaterialTheme.typography.labelSmall.copy(color = TextMuted)
+                        style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary)
                     )
                 }
             }
@@ -519,7 +517,7 @@ private fun IncomesReturnsSection(
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = "Track money lent to friends or returns received",
-                style = MaterialTheme.typography.bodySmall.copy(color = TextMuted, fontSize = 12.sp)
+                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary, fontSize = 12.sp)
             )
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -572,9 +570,9 @@ private fun IncomesReturnsSection(
                     value = newName,
                     onValueChange = { newName = it },
                     singleLine = true,
-                    placeholder = { Text("Friend name", color = TextDisabled, fontSize = 13.sp) },
+                    placeholder = { Text("Friend name", color = TextSecondary, fontSize = 13.sp) },
                     leadingIcon = {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Person, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
                     },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = if (selectedType == "LENT") TransferBlueGrey else IncomeGreen,
@@ -592,7 +590,7 @@ private fun IncomesReturnsSection(
                     onValueChange = { newAmount = it.filter { c -> c.isDigit() || c == '.' } },
                     singleLine = true,
                     prefix = { Text("₹", color = TextSecondary, fontSize = 13.sp) },
-                    placeholder = { Text("Amount", color = TextDisabled, fontSize = 13.sp) },
+                    placeholder = { Text("Amount", color = TextSecondary, fontSize = 13.sp) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = if (selectedType == "LENT") TransferBlueGrey else IncomeGreen,
@@ -679,21 +677,21 @@ private fun IncomesReturnsSection(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text("Total Lent", style = MaterialTheme.typography.labelSmall.copy(color = TextMuted))
+                        Text("Total Lent", style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary))
                         Text(
                             "₹${CurrencyFormatter.formatPlain(totalLent)}",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = TransferBlueGrey)
                         )
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Recovered", style = MaterialTheme.typography.labelSmall.copy(color = TextMuted))
+                        Text("Recovered", style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary))
                         Text(
                             "₹${CurrencyFormatter.formatPlain(totalRecovered)}",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = IncomeGreen)
                         )
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("Returns", style = MaterialTheme.typography.labelSmall.copy(color = TextMuted))
+                        Text("Returns", style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary))
                         Text(
                             "₹${CurrencyFormatter.formatPlain(totalReturned)}",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = IncomeGreen)

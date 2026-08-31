@@ -86,8 +86,6 @@ import com.example.moneyminder.theme.CardBorder
 import com.example.moneyminder.theme.CardBorderSubtle
 import com.example.moneyminder.theme.ExpenseRed
 import com.example.moneyminder.theme.IncomeGreen
-import com.example.moneyminder.theme.TextDisabled
-import com.example.moneyminder.theme.TextMuted
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
 import com.example.moneyminder.ui.viewmodel.MainViewModel
@@ -201,7 +199,7 @@ fun SmsReviewScreen(
                         Text(
                             title,
                             fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selectedTab == index) TextPrimary else TextMuted,
+                            color = if (selectedTab == index) TextPrimary else TextSecondary,
                             fontSize = 13.sp
                         )
                     }
@@ -343,13 +341,13 @@ private fun InboxSyncContent(
             Text(
                 "No SMS found",
                 style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold, color = TextMuted
+                    fontWeight = FontWeight.Bold, color = TextSecondary
                 )
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 "No messages found in the last 90 days",
-                style = MaterialTheme.typography.bodySmall.copy(color = TextDisabled),
+                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary),
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(20.dp))
@@ -414,7 +412,7 @@ private fun InboxSyncContent(
                     Text(
                         text = dateLabel,
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextMuted,
+                            color = TextSecondary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
                             letterSpacing = 0.5.sp
@@ -510,7 +508,7 @@ private fun SmsInboxItem(
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = null,
-                    tint = TextMuted,
+                    tint = TextSecondary,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -529,7 +527,7 @@ private fun SmsInboxItem(
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = if (isTransaction) FontWeight.Bold else FontWeight.SemiBold,
                         color = when {
-                            isDuplicate -> TextMuted
+                            isDuplicate -> TextSecondary
                             isTransaction -> TextPrimary
                             else -> TextSecondary
                         }
@@ -544,7 +542,7 @@ private fun SmsInboxItem(
                 Text(
                     text = timeText,
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = if (isTransaction && !isDuplicate) TextSecondary else TextDisabled,
+                        color = TextSecondary,
                         fontSize = 11.sp
                     )
                 )
@@ -559,7 +557,7 @@ private fun SmsInboxItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val amountColor = when {
-                        isDuplicate -> TextMuted
+                        isDuplicate -> TextSecondary
                         candidate.type == TransactionType.INCOME -> IncomeGreen
                         else -> ExpenseRed
                     }
@@ -575,14 +573,14 @@ private fun SmsInboxItem(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "·",
-                        color = TextMuted,
+                        color = TextSecondary,
                         fontSize = 12.sp
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = candidate.suggestedAccount.displayName,
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = if (isDuplicate) TextDisabled else TextSecondary,
+                            color = TextSecondary,
                             fontSize = 11.sp
                         )
                     )
@@ -605,7 +603,7 @@ private fun SmsInboxItem(
             Text(
                 text = message.body.replace("\n", " ").trim(),
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = if (isDuplicate) TextDisabled else TextSecondary,
+                    color = TextSecondary,
                     lineHeight = 16.sp,
                     fontSize = 12.sp
                 ),
@@ -672,7 +670,7 @@ private fun PasteSmsContent(viewModel: MainViewModel) {
                 placeholder = {
                     Text(
                         text = "Paste one or more transaction SMS messages here...\n\nExample:\nUnion Bank of India A/c *0531 Debited Rs:349.00 on 25-08-2026 10:00:38 by Mob Bk ref no 214034114011, Fvg: Airtel Avl Bal Rs:24163.65.",
-                        color = TextDisabled,
+                        color = TextSecondary,
                         fontSize = 13.sp,
                         lineHeight = 18.sp
                     )
@@ -716,7 +714,7 @@ private fun PasteSmsContent(viewModel: MainViewModel) {
         } else {
             Text(
                 text = "Tap a transaction below to pre-fill the Add screen:",
-                style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
+                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -780,7 +778,7 @@ private fun PastedSmsCard(
                     text = candidate.suggestedCategory,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        color = if (candidate.isDuplicate) TextMuted else TextPrimary
+                        color = if (candidate.isDuplicate) TextSecondary else TextPrimary
                     ),
                     maxLines = 1,
                     modifier = Modifier.weight(1f)
@@ -792,7 +790,7 @@ private fun PastedSmsCard(
                         "- ${CurrencyFormatter.format(candidate.amount)}",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        color = if (candidate.isDuplicate) TextMuted
+                        color = if (candidate.isDuplicate) TextSecondary
                         else if (candidate.type == TransactionType.INCOME) IncomeGreen
                         else ExpenseRed
                     )
@@ -881,7 +879,7 @@ private fun BlockedSendersDialog(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "SMS from these senders are hidden from your inbox sync",
-                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -895,7 +893,7 @@ private fun BlockedSendersDialog(
                     ) {
                         Text(
                             text = "No blocked senders",
-                            style = MaterialTheme.typography.bodyMedium.copy(color = TextMuted)
+                            style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
                         )
                     }
                 } else {
