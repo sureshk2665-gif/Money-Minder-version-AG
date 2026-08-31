@@ -3,6 +3,8 @@ package com.example.moneyminder.ui.viewmodel
 import android.app.Application
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.moneyminder.data.backup.BackupFileManager
@@ -38,12 +40,37 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
     private val _restoreComplete = MutableStateFlow(false)
     val restoreComplete: StateFlow<Boolean> = _restoreComplete.asStateFlow()
 
+    private val _needsStoragePermission = MutableStateFlow(false)
+    val needsStoragePermission: StateFlow<Boolean> = _needsStoragePermission.asStateFlow()
+
     init {
         ScheduledBackupWorker.scheduleAll(context)
+        checkStoragePermission()
+    }
+
+    fun checkStoragePermission() {
+        _needsStoragePermission.value = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            !Environment.isExternalStorageManager()
+        } else {
+            false
+        }
+    }
+
+    fun hasStorageAccess(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            true
+        }
     }
 
     fun backupNow() {
         viewModelScope.launch {
+            if (!hasStorageAccess()) {
+                toast("Grant 'All Files Access' permission first")
+                _needsStoragePermission.value = true
+                return@launch
+            }
             setOperationStatus(BackupOperationStatus.IN_PROGRESS, "Creating backup...", 0.2f)
             try {
                 val transactions = withContext(Dispatchers.IO) { dao.getAllCalculatedTransactions() }

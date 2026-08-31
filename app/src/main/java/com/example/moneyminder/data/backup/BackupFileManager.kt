@@ -1,6 +1,7 @@
 package com.example.moneyminder.data.backup
 
 import android.content.Context
+import android.os.Environment
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -30,7 +31,8 @@ object BackupFileManager {
     }
 
     private fun getRootDir(context: Context): File {
-        return File(context.getExternalFilesDir(null), ROOT_FOLDER).apply { mkdirs() }
+        val documentsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+        return File(documentsDir, ROOT_FOLDER).apply { mkdirs() }
     }
 
     private fun getAutoDir(context: Context): File {
@@ -76,7 +78,7 @@ object BackupFileManager {
     }
 
     fun getDisplayPath(): String {
-        return "Android/data/com.example.moneyminder/files/$ROOT_FOLDER"
+        return "Documents/$ROOT_FOLDER"
     }
 
     fun getAutoDisplayPath(): String {

@@ -1,6 +1,8 @@
 package com.example.moneyminder.data.backup
 
 import android.content.Context
+import android.os.Build
+import android.os.Environment
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -18,6 +20,9 @@ class ScheduledBackupWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+            return Result.retry()
+        }
         val prefs = BackupPreferences(applicationContext)
         val dao = TransactionDao(applicationContext)
         val transactions = dao.getAllCalculatedTransactions()
