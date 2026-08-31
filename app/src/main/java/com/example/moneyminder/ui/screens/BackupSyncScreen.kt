@@ -1,6 +1,9 @@
 package com.example.moneyminder.ui.screens
 
+import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -70,6 +73,7 @@ import com.example.moneyminder.theme.TextMuted
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
 import com.example.moneyminder.theme.TransferBlueGrey
+import com.example.moneyminder.theme.WalletAccent
 import com.example.moneyminder.ui.viewmodel.BackupViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -82,6 +86,7 @@ fun BackupSyncScreen(
 ) {
     val context = LocalContext.current
     val status by viewModel.backupStatus.collectAsState()
+    val needsPermission by viewModel.needsStoragePermission.collectAsState()
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -308,6 +313,54 @@ fun BackupSyncScreen(
                                         color = TextMuted, fontSize = 10.5.sp, lineHeight = 15.sp
                                     )
                                 )
+                            }
+                        }
+                    }
+
+                    // Storage permission prompt (Android 11+)
+                    if (needsPermission) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(Color(0xFF241A08))
+                                    .border(1.dp, Color(0xFF504020), RoundedCornerShape(14.dp))
+                                    .clickable {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                                                data = Uri.parse("package:${context.packageName}")
+                                            }
+                                            context.startActivity(intent)
+                                        }
+                                    }
+                                    .padding(14.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.FolderOpen,
+                                        null,
+                                        tint = WalletAccent,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            "Storage Access Required",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = WalletAccent,
+                                                fontSize = 13.sp
+                                            )
+                                        )
+                                        Text(
+                                            "Tap to grant 'All Files Access' so backups save to Documents folder",
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                color = TextSecondary, fontSize = 11.sp
+                                            )
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

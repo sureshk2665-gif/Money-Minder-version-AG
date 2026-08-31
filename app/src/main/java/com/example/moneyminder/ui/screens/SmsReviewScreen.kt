@@ -605,7 +605,7 @@ private fun SmsInboxItem(
             Text(
                 text = message.body.replace("\n", " ").trim(),
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = if (isDuplicate) TextDisabled else TextMuted,
+                    color = if (isDuplicate) TextDisabled else TextSecondary,
                     lineHeight = 16.sp,
                     fontSize = 12.sp
                 ),
