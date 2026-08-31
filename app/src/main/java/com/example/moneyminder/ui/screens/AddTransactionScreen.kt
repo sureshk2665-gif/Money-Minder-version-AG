@@ -72,8 +72,6 @@ import com.example.moneyminder.theme.ExpensePillBg
 import com.example.moneyminder.theme.ExpenseRed
 import com.example.moneyminder.theme.IncomeGreen
 import com.example.moneyminder.theme.IncomePillBg
-import com.example.moneyminder.theme.TextDisabled
-import com.example.moneyminder.theme.TextMuted
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
 import com.example.moneyminder.theme.TransferBlueGrey
@@ -361,7 +359,7 @@ fun AddTransactionScreen(
                                     Text(
                                         text = "0",
                                         style = MaterialTheme.typography.displayMedium.copy(
-                                            color = TextDisabled,
+                                            color = TextSecondary,
                                             fontWeight = FontWeight.Bold
                                         )
                                     )
@@ -408,7 +406,7 @@ fun AddTransactionScreen(
                             OutlinedTextField(
                                 value = categoryText,
                                 onValueChange = { categoryText = it },
-                                placeholder = { Text("e.g. Salary, LIC, Groceries, Dinner", color = TextDisabled) },
+                                placeholder = { Text("e.g. Salary, LIC, Groceries, Dinner", color = TextSecondary) },
                                 singleLine = true,
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = TextPrimary,
@@ -427,7 +425,7 @@ fun AddTransactionScreen(
                                 Spacer(modifier = Modifier.height(10.dp))
                                 Text(
                                     text = "Recent / Saved Categories",
-                                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
+                                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 FlowRow(
@@ -514,7 +512,7 @@ fun AddTransactionScreen(
                                         Text(
                                             text = "Available: ${CurrencyFormatter.format(balances.getBalance(fromAccount))}",
                                             style = MaterialTheme.typography.labelSmall.copy(
-                                                color = TextMuted,
+                                                color = TextSecondary,
                                                 fontSize = 11.sp
                                             )
                                         )
@@ -653,7 +651,7 @@ fun AddTransactionScreen(
                         OutlinedTextField(
                             value = noteText,
                             onValueChange = { noteText = it },
-                            placeholder = { Text("Add payment details, purpose, or reference", color = TextDisabled) },
+                            placeholder = { Text("Add payment details, purpose, or reference", color = TextSecondary) },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = TextPrimary,
                                 unfocusedBorderColor = CardBorder,
