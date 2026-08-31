@@ -435,7 +435,7 @@ fun InsightsScreen(
                                 ) {
                                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Add Entry on This Date", fontWeight = FontWeight.Bold)
+                                    Text("Add Entry on This Date", fontWeight = FontWeight.Bold, color = Color.Black)
                                 }
                             }
                         }
@@ -461,7 +461,7 @@ fun InsightsScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = CardBackgroundElevated, contentColor = TextPrimary),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("+ Add Another on This Date")
+                            Text("+ Add Another on This Date", color = TextPrimary)
                         }
                     }
                 }
