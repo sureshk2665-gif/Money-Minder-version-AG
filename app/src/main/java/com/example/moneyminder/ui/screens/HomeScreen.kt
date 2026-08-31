@@ -228,7 +228,7 @@ private fun OverallBalanceCard(
                 Text(
                     text = dateRangeText,
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextMuted,
+                        color = TextSecondary,
                         fontSize = 11.sp
                     )
                 )
@@ -493,14 +493,14 @@ private fun EmptyActivityView(
                 text = "No transactions in this month",
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.SemiBold,
-                    color = TextSecondary
+                    color = TextPrimary
                 )
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = "Add an expense, income, or transfer to see historical running balances.",
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = TextMuted,
+                    color = TextSecondary,
                     fontSize = 12.sp
                 ),
                 modifier = Modifier.padding(horizontal = 16.dp)
