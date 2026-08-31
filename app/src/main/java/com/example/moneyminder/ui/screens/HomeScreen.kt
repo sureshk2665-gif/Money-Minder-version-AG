@@ -268,7 +268,7 @@ private fun OverallBalanceCard(
                         Text(
                             text = "Income",
                             style = MaterialTheme.typography.labelMedium.copy(
-                                color = IncomeGreen,
+                                color = TextPrimary,
                                 fontWeight = FontWeight.SemiBold
                             )
                         )
@@ -278,7 +278,7 @@ private fun OverallBalanceCard(
                         text = "+ ${CurrencyFormatter.format(monthlyIncome)}",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
-                            color = IncomeGreen,
+                            color = TextPrimary,
                             fontSize = 15.sp
                         )
                     )

@@ -697,7 +697,10 @@ fun AddTransactionScreen(
                     ) {
                         Text(
                             text = "Save Transaction",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
                         )
                     }
 

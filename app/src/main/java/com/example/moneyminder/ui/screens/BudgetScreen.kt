@@ -266,7 +266,7 @@ private fun SalaryBudgetSection(
                         text = "₹ ${CurrencyFormatter.formatPlain(balance)}",
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = FontWeight.Bold,
-                            color = if (balance >= 0) IncomeGreen else ExpenseRed
+                            color = TextPrimary
                         )
                     )
                 }
