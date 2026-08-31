@@ -5,6 +5,7 @@ import com.example.moneyminder.data.model.TransactionType
 import com.example.moneyminder.data.parser.SmsParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -57,5 +58,42 @@ class SmsParserTest {
         assertEquals(AccountType.BANK, result.suggestedAccount)
         assertEquals("426633691841", result.referenceNumber)
         assertEquals(1414.57, result.postBalance!!, 0.01)
+    }
+
+    @Test
+    fun testEmiReminderFiltered() {
+        val sms = "Dear Customer, Your Zype EMI of Rs.3136 is due on 01-Sep-2026. Pay now to avoid late fees. Download app: https://zype.in"
+        val result = SmsParser.parseSingle(sms)
+        assertNull(result)
+    }
+
+    @Test
+    fun testPromotionalInsuranceFiltered() {
+        val sms = "Get Health Insurance cover of Rs.10 Lakh at just Rs.500/month. Apply now! T&C Apply. Call 1800-XXX-XXXX"
+        val result = SmsParser.parseSingle(sms)
+        assertNull(result)
+    }
+
+    @Test
+    fun testPromotionalCreditCardFiltered() {
+        val sms = "Congratulations! You are eligible for a pre-approved Credit Card with Rs.2,00,000 limit. Apply now at https://bank.co/card"
+        val result = SmsParser.parseSingle(sms)
+        assertNull(result)
+    }
+
+    @Test
+    fun testPaymentDueReminderFiltered() {
+        val sms = "Reminder: Your loan repayment of Rs.5,000 is due on 05-Sep-2026. Pay before due date to avoid penalty."
+        val result = SmsParser.parseSingle(sms)
+        assertNull(result)
+    }
+
+    @Test
+    fun testActualDebitNotFilteredByReminder() {
+        val sms = "A/c *0531 Debited Rs:3136.00 on 01-09-2026 by NEFT ref no 12345. Avl Bal Rs:21027.65"
+        val result = SmsParser.parseSingle(sms)
+        assertNotNull(result)
+        assertEquals(TransactionType.EXPENSE, result!!.type)
+        assertEquals(3136.0, result.amount, 0.01)
     }
 }
