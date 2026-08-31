@@ -4,14 +4,17 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,8 +27,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sms
@@ -33,12 +39,16 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
@@ -60,8 +70,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import com.example.moneyminder.data.model.InboxSmsMessage
 import com.example.moneyminder.data.model.SmsCandidate
@@ -78,7 +90,6 @@ import com.example.moneyminder.theme.TextDisabled
 import com.example.moneyminder.theme.TextMuted
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
-import com.example.moneyminder.theme.WalletAccent
 import com.example.moneyminder.ui.viewmodel.MainViewModel
 import com.example.moneyminder.util.CurrencyFormatter
 import com.example.moneyminder.util.DateTimeUtils
@@ -95,6 +106,7 @@ fun SmsReviewScreen(
     val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Inbox Sync", "Paste SMS")
+    var showBlockedSendersDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -123,7 +135,7 @@ fun SmsReviewScreen(
                 )
             }
             Spacer(modifier = Modifier.width(12.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "SMS Transactions",
                     style = MaterialTheme.typography.titleLarge.copy(
@@ -135,6 +147,35 @@ fun SmsReviewScreen(
                     text = "Sync from inbox or paste manually",
                     style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                 )
+            }
+            val blockedCount by viewModel.blockedSmsSenders.collectAsState()
+            if (blockedCount.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(ExpenseRed.copy(alpha = 0.15f))
+                        .border(1.dp, ExpenseRed.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                        .clickable { showBlockedSendersDialog = true }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Block,
+                            contentDescription = null,
+                            tint = ExpenseRed,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${blockedCount.size}",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = ExpenseRed,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
+                }
             }
         }
 
@@ -169,14 +210,29 @@ fun SmsReviewScreen(
         }
 
         when (selectedTab) {
-            0 -> InboxSyncContent(viewModel = viewModel)
+            0 -> InboxSyncContent(
+                viewModel = viewModel,
+                onBlockSender = { senderName ->
+                    viewModel.blockSmsSender(senderName)
+                }
+            )
             1 -> PasteSmsContent(viewModel = viewModel)
         }
+    }
+
+    if (showBlockedSendersDialog) {
+        BlockedSendersDialog(
+            viewModel = viewModel,
+            onDismiss = { showBlockedSendersDialog = false }
+        )
     }
 }
 
 @Composable
-private fun InboxSyncContent(viewModel: MainViewModel) {
+private fun InboxSyncContent(
+    viewModel: MainViewModel,
+    onBlockSender: (String) -> Unit
+) {
     val context = LocalContext.current
     val inboxSms by viewModel.inboxSmsList.collectAsState()
     val isLoading by viewModel.smsLoading.collectAsState()
@@ -377,7 +433,8 @@ private fun InboxSyncContent(viewModel: MainViewModel) {
                             if (msg.isFinancial && !msg.isDuplicate) {
                                 viewModel.useInboxSmsToAdd(msg)
                             }
-                        }
+                        },
+                        onBlockSender = { onBlockSender(msg.sender) }
                     )
                     HorizontalDivider(
                         color = CardBorderSubtle,
@@ -390,16 +447,20 @@ private fun InboxSyncContent(viewModel: MainViewModel) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SmsInboxItem(
     message: InboxSmsMessage,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onBlockSender: () -> Unit
 ) {
     val timeFormat = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
     val timeText = timeFormat.format(Date(message.dateMillis))
     val isTransaction = message.isFinancial
     val isDuplicate = message.isDuplicate
+    var showDropdown by remember { mutableStateOf(false) }
 
+    Box {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -407,7 +468,13 @@ private fun SmsInboxItem(
                 if (isTransaction && !isDuplicate) CardBackground
                 else BackgroundDark
             )
-            .clickable(enabled = isTransaction && !isDuplicate) { onClick() }
+            .combinedClickable(
+                enabled = true,
+                onClick = {
+                    if (isTransaction && !isDuplicate) onClick()
+                },
+                onLongClick = { showDropdown = true }
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top
     ) {
@@ -545,6 +612,45 @@ private fun SmsInboxItem(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+    }
+
+        MaterialTheme(
+            colorScheme = MaterialTheme.colorScheme.copy(
+                surface = CardBackgroundElevated,
+                onSurface = TextPrimary
+            )
+        ) {
+            DropdownMenu(
+                expanded = showDropdown,
+                onDismissRequest = { showDropdown = false },
+                offset = DpOffset(48.dp, 0.dp)
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Block,
+                                contentDescription = null,
+                                tint = ExpenseRed,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Remove sender",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = ExpenseRed,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        }
+                    },
+                    onClick = {
+                        showDropdown = false
+                        onBlockSender()
+                    }
+                )
+            }
         }
     }
 }
@@ -723,6 +829,113 @@ private fun PastedSmsCard(
                             fontWeight = FontWeight.SemiBold
                         )
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BlockedSendersDialog(
+    viewModel: MainViewModel,
+    onDismiss: () -> Unit
+) {
+    val blockedSenders by viewModel.blockedSmsSenders.collectAsState()
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .fillMaxHeight(0.6f),
+            shape = RoundedCornerShape(24.dp),
+            color = CardBackground,
+            border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Block,
+                            contentDescription = null,
+                            tint = ExpenseRed,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Blocked Senders",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                        )
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "SMS from these senders are hidden from your inbox sync",
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                if (blockedSenders.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No blocked senders",
+                            style = MaterialTheme.typography.bodyMedium.copy(color = TextMuted)
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        items(blockedSenders.sorted()) { sender ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(CardBackgroundElevated)
+                                    .border(1.dp, CardBorderSubtle, RoundedCornerShape(12.dp))
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = sender,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = TextPrimary
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(
+                                    onClick = { viewModel.unblockSmsSender(sender) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Unblock",
+                                        tint = ExpenseRed,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

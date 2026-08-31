@@ -24,6 +24,7 @@ import com.example.moneyminder.data.model.SmsCandidate
 import com.example.moneyminder.data.model.TransactionEntity
 import com.example.moneyminder.data.model.TransactionType
 import com.example.moneyminder.data.parser.SmsInboxReader
+import com.example.moneyminder.data.sms.SmsBlockPreferences
 import com.example.moneyminder.data.parser.SmsParser
 import com.example.moneyminder.util.DateTimeUtils
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +40,11 @@ import java.io.File
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     val dao = TransactionDao(application)
+    val smsBlockPrefs = SmsBlockPreferences(application)
+
+    init {
+        _blockedSmsSenders.value = smsBlockPrefs.getBlockedSenders()
+    }
 
     // Current navigation tab: 0=Home, 1=Insights, 2=Add, 3=Calendar, 4=SMS
     private val _selectedTab = MutableStateFlow(0)
@@ -86,6 +92,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _smsPermissionGranted = MutableStateFlow(false)
     val smsPermissionGranted: StateFlow<Boolean> = _smsPermissionGranted.asStateFlow()
+
+    private val _blockedSmsSenders = MutableStateFlow<Set<String>>(emptySet())
+    val blockedSmsSenders: StateFlow<Set<String>> = _blockedSmsSenders.asStateFlow()
 
     // Pre-filled Transaction data for Add Screen (e.g. from SMS or duplicate)
     private val _prefilledTransaction = MutableStateFlow<TransactionEntity?>(null)
@@ -377,6 +386,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             withContext(Dispatchers.Main) { _smsLoading.value = true }
             val context = getApplication<Application>()
             val allMessages = SmsInboxReader.readAllSms(context, limitDays = 90)
+                .filter { !smsBlockPrefs.isSenderBlocked(it.sender) }
 
             val validated = allMessages.map { msg ->
                 if (msg.isFinancial && msg.parsedCandidate != null) {
@@ -406,6 +416,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _smsLoading.value = false
             }
         }
+    }
+
+    fun blockSmsSender(senderName: String) {
+        smsBlockPrefs.blockSender(senderName)
+        _blockedSmsSenders.value = smsBlockPrefs.getBlockedSenders()
+        _inboxSmsList.value = _inboxSmsList.value.filter {
+            !smsBlockPrefs.isSenderBlocked(it.sender)
+        }
+    }
+
+    fun unblockSmsSender(senderName: String) {
+        smsBlockPrefs.unblockSender(senderName)
+        _blockedSmsSenders.value = smsBlockPrefs.getBlockedSenders()
+        syncInboxSms()
     }
 
     // Import from File (Excel / PDF)
