@@ -64,7 +64,7 @@ object SmsParser {
     fun parseSingle(sms: String): SmsCandidate? {
         val lower = sms.lowercase()
 
-        // Filter out non-financial messages like OTPs or pure marketing
+        // Filter out OTP / verification messages
         val hasOtpKeyword = lower.contains("otp") || lower.contains("verification code") || lower.contains("one time password")
         val hasTransactionKeyword = lower.contains("debited") || lower.contains("credited") ||
                 lower.contains("paid") || lower.contains("received") ||
@@ -75,15 +75,28 @@ object SmsParser {
             return null
         }
 
-        // Determine Transaction Type (Debit/Expense vs Credit/Income)
+        // Filter out promotional / marketing SMS
+        if (isPromotionalSms(lower) && !hasTransactionKeyword) {
+            return null
+        }
+
+        // Filter out EMI reminders, payment due notices, and bill reminders
+        if (isReminderSms(lower) && !hasTransactionKeyword) {
+            return null
+        }
+
+        // Use word-boundary matching for "dr" / "cr" to avoid false positives
+        val hasDrNotation = Pattern.compile("\\bdr\\b", Pattern.CASE_INSENSITIVE).matcher(sms).find()
+        val hasCrNotation = Pattern.compile("\\bcr\\b", Pattern.CASE_INSENSITIVE).matcher(sms).find()
+
         val isExpense = lower.contains("debited") || lower.contains("paid") ||
                 lower.contains("sent") || lower.contains("withdrawn") ||
                 lower.contains("spent") || lower.contains("purchase") ||
-                lower.contains("payment to") || lower.contains("dr")
+                lower.contains("payment to") || hasDrNotation
 
         val isIncome = lower.contains("credited") || lower.contains("received") ||
                 lower.contains("inward") || lower.contains("added") ||
-                lower.contains("cr") || lower.contains("refund")
+                hasCrNotation || lower.contains("refund")
 
         if (!isExpense && !isIncome) {
             return null
@@ -268,5 +281,38 @@ object SmsParser {
             }
         }
         return null
+    }
+
+    private fun isPromotionalSms(lower: String): Boolean {
+        val promoKeywords = listOf(
+            "apply now", "pre-approved", "pre approved", "preapproved",
+            "limited period", "limited offer", "special offer",
+            "avail now", "get up to", "earn up to",
+            "insurance", "policy premium", "health cover",
+            "loan offer", "credit card offer", "upgrade your",
+            "congratulations", "you are eligible", "you're eligible",
+            "exclusive offer", "cashback offer", "reward points",
+            "subscribe", "unsubscribe", "opt out", "click here to",
+            "dial ", "missed call", "give a missed call",
+            "t&c apply", "t & c apply", "terms and conditions apply",
+            "visit www", "visit http", "download app"
+        )
+        return promoKeywords.any { lower.contains(it) }
+    }
+
+    private fun isReminderSms(lower: String): Boolean {
+        val reminderKeywords = listOf(
+            "emi due", "emi is due", "emi of rs", "emi payment due",
+            "payment is due", "payment due on", "payment due by",
+            "due on", "due by", "due date",
+            "pay before", "pay by", "pay now to avoid",
+            "overdue", "outstanding", "reminder",
+            "upcoming emi", "upcoming payment", "upcoming installment",
+            "installment due", "instalment due",
+            "autopay scheduled", "auto-debit scheduled",
+            "will be debited", "will be deducted", "shall be debited",
+            "repayment due", "repay"
+        )
+        return reminderKeywords.any { lower.contains(it) }
     }
 }
