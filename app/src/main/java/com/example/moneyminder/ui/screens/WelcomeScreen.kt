@@ -14,13 +14,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.PhonelinkLock
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -30,7 +29,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -39,9 +40,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.moneyminder.R
 import com.example.moneyminder.theme.BackgroundDark
-import com.example.moneyminder.theme.CardBackground
-import com.example.moneyminder.theme.CardBorder
-import com.example.moneyminder.theme.TextMuted
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
 
@@ -62,7 +60,6 @@ fun WelcomeScreen(
         ) {
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Logo & Title Section
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -99,39 +96,31 @@ fun WelcomeScreen(
                 )
             }
 
-            // Privacy & Offline Badges Card
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(CardBackground)
-                    .border(width = 1.dp, color = CardBorder, shape = RoundedCornerShape(20.dp))
-                    .padding(20.dp)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    PrivacyFeatureRow(
-                        icon = Icons.Default.Lock,
-                        title = "No account required",
-                        subtitle = "Use immediately without signup, logins, or cloud accounts."
-                    )
+                FeatureCard(
+                    icon = Icons.Default.VerifiedUser,
+                    title = "No account required",
+                    subtitle = "Use immediately without signup or logins",
+                    accentColor = Color(0xFF4CAF50)
+                )
 
-                    PrivacyFeatureRow(
-                        icon = Icons.Default.Shield,
-                        title = "Your data stays on your device",
-                        subtitle = "100% private and stored locally in on-device database."
-                    )
+                FeatureCard(
+                    icon = Icons.Default.PhonelinkLock,
+                    title = "100% private & on-device",
+                    subtitle = "Data never leaves your phone",
+                    accentColor = Color(0xFF2196F3)
+                )
 
-                    PrivacyFeatureRow(
-                        icon = Icons.Default.WifiOff,
-                        title = "Works completely offline",
-                        subtitle = "Track expenses anytime, anywhere without an internet connection."
-                    )
-                }
+                FeatureCard(
+                    icon = Icons.Default.CloudOff,
+                    title = "Works completely offline",
+                    subtitle = "Track expenses anywhere, anytime",
+                    accentColor = Color(0xFFFF9800)
+                )
             }
 
-            // Get Started Button
             Button(
                 onClick = onGetStarted,
                 modifier = Modifier
@@ -151,7 +140,8 @@ fun WelcomeScreen(
                         text = "Get Started",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
+                            fontSize = 16.sp,
+                            color = Color.Black
                         )
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -167,49 +157,69 @@ fun WelcomeScreen(
 }
 
 @Composable
-private fun PrivacyFeatureRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+private fun FeatureCard(
+    icon: ImageVector,
     title: String,
-    subtitle: String
+    subtitle: String,
+    accentColor: Color
 ) {
-    Row(
-        verticalAlignment = Alignment.Top
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        accentColor.copy(alpha = 0.12f),
+                        accentColor.copy(alpha = 0.04f)
+                    )
+                )
+            )
+            .border(
+                width = 1.dp,
+                color = accentColor.copy(alpha = 0.2f),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .padding(16.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF24242E)),
-            contentAlignment = Alignment.Center
+        Row(
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = TextPrimary,
-                modifier = Modifier.size(18.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(14.dp))
-
-        Column {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
-                    fontSize = 14.sp
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accentColor.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(24.dp)
                 )
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary,
+                        fontSize = 15.sp
+                    )
                 )
-            )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = TextSecondary,
+                        fontSize = 13.sp
+                    )
+                )
+            }
         }
     }
 }

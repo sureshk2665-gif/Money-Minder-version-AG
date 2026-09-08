@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteForever
-import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.ReceiptLong
@@ -66,6 +65,7 @@ import com.example.moneyminder.theme.ExpenseRed
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
 import com.example.moneyminder.theme.TransferBlueGrey
+import com.example.moneyminder.data.security.MpinPreferences
 import com.example.moneyminder.ui.viewmodel.MainViewModel
 
 import com.example.moneyminder.theme.BankAccent
@@ -75,6 +75,7 @@ import com.example.moneyminder.theme.WalletAccent
 @Composable
 fun SettingsScreen(
     viewModel: MainViewModel,
+    mpinPrefs: MpinPreferences,
     onExportExcel: () -> Unit,
     onExportPdf: () -> Unit,
     onOpenBackupSync: () -> Unit,
@@ -82,6 +83,9 @@ fun SettingsScreen(
 ) {
     var showDeleteAllConfirm by remember { mutableStateOf(false) }
     var showPrivacyPolicy by remember { mutableStateOf(false) }
+    var showMpinSetup by remember { mutableStateOf(false) }
+    var showMpinReset by remember { mutableStateOf(false) }
+    var showMpinRemoveConfirm by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -174,6 +178,36 @@ fun SettingsScreen(
                         )
                     }
 
+                    // MPIN Security Section
+                    item {
+                        SettingsSectionHeader("APP SECURITY")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (mpinPrefs.isMpinSet) {
+                            SettingsActionCard(
+                                icon = Icons.Default.Lock,
+                                title = "Reset MPIN",
+                                subtitle = "Change your 4-digit PIN",
+                                onClick = { showMpinReset = true }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            SettingsActionCard(
+                                icon = Icons.Default.Lock,
+                                title = "Remove MPIN",
+                                subtitle = "Disable PIN lock on app launch",
+                                textColor = ExpenseRed,
+                                iconColor = ExpenseRed,
+                                onClick = { showMpinRemoveConfirm = true }
+                            )
+                        } else {
+                            SettingsActionCard(
+                                icon = Icons.Default.Lock,
+                                title = "Set MPIN",
+                                subtitle = "Add a 4-digit PIN to lock the app",
+                                onClick = { showMpinSetup = true }
+                            )
+                        }
+                    }
+
                     // Privacy & Security Section
                     item {
                         SettingsSectionHeader("PRIVACY & DATA STORAGE")
@@ -264,13 +298,6 @@ fun SettingsScreen(
                         SettingsSectionHeader("FUTURE EXTENSIONS")
                         Spacer(modifier = Modifier.height(8.dp))
                         SettingsItemCard(
-                            icon = Icons.Default.Fingerprint,
-                            title = "Biometric App Lock",
-                            subtitle = "Fingerprint / Face unlock security",
-                            badge = "Coming Soon"
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        SettingsItemCard(
                             icon = Icons.Default.ReceiptLong,
                             title = "Monthly Budgets & Limits",
                             subtitle = "Set category limits with alerts",
@@ -346,6 +373,83 @@ fun SettingsScreen(
             dismissButton = {
                 OutlinedButton(
                     onClick = { showDeleteAllConfirm = false },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary)
+                ) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = CardBackground,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // MPIN Setup Dialog
+    if (showMpinSetup) {
+        Dialog(
+            onDismissRequest = { showMpinSetup = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = Color.Transparent
+            ) {
+                MpinScreen(
+                    mpinPrefs = mpinPrefs,
+                    mode = MpinMode.SETUP_NEW,
+                    onSuccess = { showMpinSetup = false },
+                    onCancel = { showMpinSetup = false }
+                )
+            }
+        }
+    }
+
+    // MPIN Reset Dialog
+    if (showMpinReset) {
+        Dialog(
+            onDismissRequest = { showMpinReset = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = Color.Transparent
+            ) {
+                MpinScreen(
+                    mpinPrefs = mpinPrefs,
+                    mode = MpinMode.RESET_OLD,
+                    onSuccess = { showMpinReset = false },
+                    onCancel = { showMpinReset = false }
+                )
+            }
+        }
+    }
+
+    // MPIN Remove Confirmation
+    if (showMpinRemoveConfirm) {
+        AlertDialog(
+            onDismissRequest = { showMpinRemoveConfirm = false },
+            title = { Text("Remove MPIN?", fontWeight = FontWeight.Bold, color = ExpenseRed) },
+            text = {
+                Text(
+                    text = "This will disable the PIN lock. Anyone can open the app without a PIN.",
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        mpinPrefs.clearMpin()
+                        showMpinRemoveConfirm = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ExpenseRed, contentColor = Color.White),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Remove", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showMpinRemoveConfirm = false },
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary)
                 ) {

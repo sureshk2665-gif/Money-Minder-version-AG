@@ -93,9 +93,12 @@ import com.example.moneyminder.ui.screens.ImportReviewScreen
 import com.example.moneyminder.ui.screens.InsightsScreen
 import com.example.moneyminder.ui.screens.SettingsScreen
 import com.example.moneyminder.ui.screens.SmsReviewScreen
+import com.example.moneyminder.ui.screens.MpinMode
+import com.example.moneyminder.ui.screens.MpinScreen
 import com.example.moneyminder.ui.screens.SplashScreen
 import com.example.moneyminder.ui.screens.TransactionDetailDialog
 import com.example.moneyminder.ui.screens.WelcomeScreen
+import com.example.moneyminder.data.security.MpinPreferences
 import com.example.moneyminder.ui.viewmodel.MainViewModel
 import com.example.moneyminder.ui.screens.BackupSyncScreen
 import com.example.moneyminder.ui.viewmodel.BackupViewModel
@@ -104,6 +107,9 @@ import java.io.File
 enum class AppNavState {
     SPLASH,
     WELCOME,
+    MPIN_SETUP,
+    MPIN_VERIFY,
+    MPIN_FORGOT,
     MAIN
 }
 
@@ -117,6 +123,7 @@ class MainActivity : ComponentActivity() {
 
         val prefs = getSharedPreferences("money_minder_prefs", Context.MODE_PRIVATE)
         val isFirstLaunch = prefs.getBoolean("is_first_launch", true)
+        val mpinPrefs = MpinPreferences(this)
 
         setContent {
             MoneyMinderTheme {
@@ -130,7 +137,11 @@ class MainActivity : ComponentActivity() {
                         AppNavState.SPLASH -> {
                             SplashScreen(
                                 onTimeout = {
-                                    currentScreen = if (isFirstLaunch) AppNavState.WELCOME else AppNavState.MAIN
+                                    currentScreen = when {
+                                        isFirstLaunch -> AppNavState.WELCOME
+                                        mpinPrefs.isMpinSet -> AppNavState.MPIN_VERIFY
+                                        else -> AppNavState.MAIN
+                                    }
                                 }
                             )
                         }
@@ -138,12 +149,35 @@ class MainActivity : ComponentActivity() {
                             WelcomeScreen(
                                 onGetStarted = {
                                     prefs.edit().putBoolean("is_first_launch", false).apply()
-                                    currentScreen = AppNavState.MAIN
+                                    currentScreen = AppNavState.MPIN_SETUP
                                 }
                             )
                         }
+                        AppNavState.MPIN_SETUP -> {
+                            MpinScreen(
+                                mpinPrefs = mpinPrefs,
+                                mode = MpinMode.SETUP_NEW,
+                                onSuccess = { currentScreen = AppNavState.MAIN }
+                            )
+                        }
+                        AppNavState.MPIN_VERIFY -> {
+                            MpinScreen(
+                                mpinPrefs = mpinPrefs,
+                                mode = MpinMode.VERIFY,
+                                onSuccess = { currentScreen = AppNavState.MAIN },
+                                onForgot = { currentScreen = AppNavState.MPIN_FORGOT }
+                            )
+                        }
+                        AppNavState.MPIN_FORGOT -> {
+                            MpinScreen(
+                                mpinPrefs = mpinPrefs,
+                                mode = MpinMode.FORGOT_SECURITY,
+                                onSuccess = { currentScreen = AppNavState.MAIN },
+                                onCancel = { currentScreen = AppNavState.MPIN_VERIFY }
+                            )
+                        }
                         AppNavState.MAIN -> {
-                            MainAppContent(viewModel = viewModel, backupViewModel = backupViewModel)
+                            MainAppContent(viewModel = viewModel, backupViewModel = backupViewModel, mpinPrefs = mpinPrefs)
                         }
                     }
                 }
@@ -158,7 +192,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
+fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel, mpinPrefs: MpinPreferences) {
     val context = LocalContext.current
     val selectedTab by viewModel.selectedTab.collectAsState()
     val showMonthPicker by viewModel.showMonthPicker.collectAsState()
@@ -402,6 +436,7 @@ fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
     if (showSettings) {
         SettingsScreen(
             viewModel = viewModel,
+            mpinPrefs = mpinPrefs,
             onExportExcel = {
                 val file = viewModel.exportReport(isPdf = false)
                 shareExportedFile(file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -492,6 +527,7 @@ fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
         )
     }
 }
+
 
 @Composable
 fun SmsReviewTabContent(viewModel: MainViewModel) {
