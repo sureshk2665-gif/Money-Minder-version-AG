@@ -31,7 +31,34 @@ class MpinPreferences(context: Context) {
     }
 
     fun clearMpin() {
-        prefs.edit().remove(KEY_PIN_HASH).apply()
+        prefs.edit()
+            .remove(KEY_PIN_HASH)
+            .remove(KEY_SECURITY_Q1)
+            .remove(KEY_SECURITY_A1)
+            .remove(KEY_SECURITY_Q2)
+            .remove(KEY_SECURITY_A2)
+            .apply()
+    }
+
+    fun setSecurityQuestions(q1: String, a1: String, q2: String, a2: String) {
+        prefs.edit()
+            .putString(KEY_SECURITY_Q1, q1)
+            .putString(KEY_SECURITY_A1, a1.trim().lowercase())
+            .putString(KEY_SECURITY_Q2, q2)
+            .putString(KEY_SECURITY_A2, a2.trim().lowercase())
+            .apply()
+    }
+
+    fun getSecurityQuestion1(): String =
+        prefs.getString(KEY_SECURITY_Q1, "") ?: ""
+
+    fun getSecurityQuestion2(): String =
+        prefs.getString(KEY_SECURITY_Q2, "") ?: ""
+
+    fun verifySecurityAnswers(a1: String, a2: String): Boolean {
+        val stored1 = prefs.getString(KEY_SECURITY_A1, null) ?: return false
+        val stored2 = prefs.getString(KEY_SECURITY_A2, null) ?: return false
+        return stored1 == a1.trim().lowercase() && stored2 == a2.trim().lowercase()
     }
 
     var failedAttempts: Int
@@ -52,5 +79,18 @@ class MpinPreferences(context: Context) {
         private const val KEY_PIN_HASH = "mpin_hash"
         private const val KEY_FAILED_ATTEMPTS = "failed_attempts"
         private const val KEY_LOCKOUT_UNTIL = "lockout_until"
+        private const val KEY_SECURITY_Q1 = "security_q1"
+        private const val KEY_SECURITY_A1 = "security_a1"
+        private const val KEY_SECURITY_Q2 = "security_q2"
+        private const val KEY_SECURITY_A2 = "security_a2"
+
+        val SECURITY_QUESTIONS = listOf(
+            "What was your childhood nickname?",
+            "What is the name of your first school?",
+            "What was your first mobile phone brand?",
+            "What is the name of your childhood best friend?",
+            "What was the name of your first pet?",
+            "What is the name of the street you grew up on?"
+        )
     }
 }
