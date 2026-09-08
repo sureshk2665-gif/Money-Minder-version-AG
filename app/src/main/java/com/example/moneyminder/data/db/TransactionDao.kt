@@ -10,6 +10,8 @@ import com.example.moneyminder.data.model.BudgetItem
 import com.example.moneyminder.data.model.CategoryEntity
 import com.example.moneyminder.data.model.CategorySpending
 import com.example.moneyminder.data.model.DaySummary
+import com.example.moneyminder.data.model.HeldMoneyEntry
+import com.example.moneyminder.data.model.HeldMoneyTransaction
 import com.example.moneyminder.data.model.LentReturnItem
 import com.example.moneyminder.data.model.MonthlySummary
 import com.example.moneyminder.data.model.TransactionEntity
@@ -888,6 +890,99 @@ class TransactionDao(context: Context) {
             "${MoneyMinderDatabaseHelper.COL_LR_ID} = ?",
             arrayOf(id.toString())
         )
+        notifyDataChanged()
+    }
+
+    // ─── Held Money ───
+
+    @Synchronized
+    fun getHeldMoneyEntries(): List<HeldMoneyEntry> {
+        val db = dbHelper.readableDatabase
+        val list = mutableListOf<HeldMoneyEntry>()
+        val cursor = db.rawQuery(
+            "SELECT * FROM ${MoneyMinderDatabaseHelper.TABLE_HELD_MONEY} ORDER BY ${MoneyMinderDatabaseHelper.COL_HM_CREATED} DESC",
+            null
+        )
+        cursor.use {
+            while (it.moveToNext()) {
+                list.add(
+                    HeldMoneyEntry(
+                        id = it.getLong(it.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_HM_ID)),
+                        friendName = it.getString(it.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_HM_FRIEND_NAME)),
+                        totalAmount = it.getDouble(it.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_HM_TOTAL_AMOUNT)),
+                        createdAt = it.getLong(it.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_HM_CREATED))
+                    )
+                )
+            }
+        }
+        return list
+    }
+
+    @Synchronized
+    fun insertHeldMoneyEntry(entry: HeldMoneyEntry): Long {
+        val db = dbHelper.writableDatabase
+        val values = ContentValues().apply {
+            put(MoneyMinderDatabaseHelper.COL_HM_FRIEND_NAME, entry.friendName)
+            put(MoneyMinderDatabaseHelper.COL_HM_TOTAL_AMOUNT, entry.totalAmount)
+            put(MoneyMinderDatabaseHelper.COL_HM_CREATED, entry.createdAt)
+        }
+        val id = db.insert(MoneyMinderDatabaseHelper.TABLE_HELD_MONEY, null, values)
+        notifyDataChanged()
+        return id
+    }
+
+    @Synchronized
+    fun deleteHeldMoneyEntry(id: Long) {
+        val db = dbHelper.writableDatabase
+        db.delete(MoneyMinderDatabaseHelper.TABLE_HELD_MONEY_TX, "${MoneyMinderDatabaseHelper.COL_HMT_HELD_ID} = ?", arrayOf(id.toString()))
+        db.delete(MoneyMinderDatabaseHelper.TABLE_HELD_MONEY, "${MoneyMinderDatabaseHelper.COL_HM_ID} = ?", arrayOf(id.toString()))
+        notifyDataChanged()
+    }
+
+    @Synchronized
+    fun getHeldMoneyTransactions(heldMoneyId: Long): List<HeldMoneyTransaction> {
+        val db = dbHelper.readableDatabase
+        val list = mutableListOf<HeldMoneyTransaction>()
+        val cursor = db.rawQuery(
+            "SELECT * FROM ${MoneyMinderDatabaseHelper.TABLE_HELD_MONEY_TX} WHERE ${MoneyMinderDatabaseHelper.COL_HMT_HELD_ID} = ? ORDER BY ${MoneyMinderDatabaseHelper.COL_HMT_CREATED} DESC",
+            arrayOf(heldMoneyId.toString())
+        )
+        cursor.use {
+            while (it.moveToNext()) {
+                list.add(
+                    HeldMoneyTransaction(
+                        id = it.getLong(it.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_HMT_ID)),
+                        heldMoneyId = it.getLong(it.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_HMT_HELD_ID)),
+                        type = it.getString(it.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_HMT_TYPE)),
+                        amount = it.getDouble(it.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_HMT_AMOUNT)),
+                        note = it.getString(it.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_HMT_NOTE)) ?: "",
+                        createdAt = it.getLong(it.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_HMT_CREATED))
+                    )
+                )
+            }
+        }
+        return list
+    }
+
+    @Synchronized
+    fun insertHeldMoneyTransaction(tx: HeldMoneyTransaction): Long {
+        val db = dbHelper.writableDatabase
+        val values = ContentValues().apply {
+            put(MoneyMinderDatabaseHelper.COL_HMT_HELD_ID, tx.heldMoneyId)
+            put(MoneyMinderDatabaseHelper.COL_HMT_TYPE, tx.type)
+            put(MoneyMinderDatabaseHelper.COL_HMT_AMOUNT, tx.amount)
+            put(MoneyMinderDatabaseHelper.COL_HMT_NOTE, tx.note)
+            put(MoneyMinderDatabaseHelper.COL_HMT_CREATED, tx.createdAt)
+        }
+        val id = db.insert(MoneyMinderDatabaseHelper.TABLE_HELD_MONEY_TX, null, values)
+        notifyDataChanged()
+        return id
+    }
+
+    @Synchronized
+    fun deleteHeldMoneyTransaction(id: Long) {
+        val db = dbHelper.writableDatabase
+        db.delete(MoneyMinderDatabaseHelper.TABLE_HELD_MONEY_TX, "${MoneyMinderDatabaseHelper.COL_HMT_ID} = ?", arrayOf(id.toString()))
         notifyDataChanged()
     }
 

@@ -45,6 +45,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.AlertDialog
@@ -80,6 +81,7 @@ import com.example.moneyminder.data.model.TransactionType
 import com.example.moneyminder.theme.BackgroundDark
 import com.example.moneyminder.theme.CardBackground
 import com.example.moneyminder.theme.CardBorder
+import com.example.moneyminder.theme.ExpenseRed
 import com.example.moneyminder.theme.MoneyMinderTheme
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
@@ -93,9 +95,12 @@ import com.example.moneyminder.ui.screens.ImportReviewScreen
 import com.example.moneyminder.ui.screens.InsightsScreen
 import com.example.moneyminder.ui.screens.SettingsScreen
 import com.example.moneyminder.ui.screens.SmsReviewScreen
+import com.example.moneyminder.ui.screens.MpinMode
+import com.example.moneyminder.ui.screens.MpinScreen
 import com.example.moneyminder.ui.screens.SplashScreen
 import com.example.moneyminder.ui.screens.TransactionDetailDialog
 import com.example.moneyminder.ui.screens.WelcomeScreen
+import com.example.moneyminder.data.security.MpinPreferences
 import com.example.moneyminder.ui.viewmodel.MainViewModel
 import com.example.moneyminder.ui.screens.BackupSyncScreen
 import com.example.moneyminder.ui.viewmodel.BackupViewModel
@@ -104,6 +109,8 @@ import java.io.File
 enum class AppNavState {
     SPLASH,
     WELCOME,
+    MPIN_VERIFY,
+    MPIN_FORGOT,
     MAIN
 }
 
@@ -117,6 +124,7 @@ class MainActivity : ComponentActivity() {
 
         val prefs = getSharedPreferences("money_minder_prefs", Context.MODE_PRIVATE)
         val isFirstLaunch = prefs.getBoolean("is_first_launch", true)
+        val mpinPrefs = MpinPreferences(this)
 
         setContent {
             MoneyMinderTheme {
@@ -130,7 +138,11 @@ class MainActivity : ComponentActivity() {
                         AppNavState.SPLASH -> {
                             SplashScreen(
                                 onTimeout = {
-                                    currentScreen = if (isFirstLaunch) AppNavState.WELCOME else AppNavState.MAIN
+                                    currentScreen = when {
+                                        isFirstLaunch -> AppNavState.WELCOME
+                                        mpinPrefs.isMpinSet -> AppNavState.MPIN_VERIFY
+                                        else -> AppNavState.MAIN
+                                    }
                                 }
                             )
                         }
@@ -142,8 +154,26 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+                        AppNavState.MPIN_VERIFY -> {
+                            MpinScreen(
+                                mpinPrefs = mpinPrefs,
+                                mode = MpinMode.VERIFY,
+                                onSuccess = { currentScreen = AppNavState.MAIN },
+                                onForgot = { currentScreen = AppNavState.MPIN_FORGOT }
+                            )
+                        }
+                        AppNavState.MPIN_FORGOT -> {
+                            ForgotMpinScreen(
+                                onDeleteAll = {
+                                    mpinPrefs.clearMpin()
+                                    viewModel.resetAllData()
+                                    currentScreen = AppNavState.MAIN
+                                },
+                                onBack = { currentScreen = AppNavState.MPIN_VERIFY }
+                            )
+                        }
                         AppNavState.MAIN -> {
-                            MainAppContent(viewModel = viewModel, backupViewModel = backupViewModel)
+                            MainAppContent(viewModel = viewModel, backupViewModel = backupViewModel, mpinPrefs = mpinPrefs)
                         }
                     }
                 }
@@ -158,7 +188,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
+fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel, mpinPrefs: MpinPreferences) {
     val context = LocalContext.current
     val selectedTab by viewModel.selectedTab.collectAsState()
     val showMonthPicker by viewModel.showMonthPicker.collectAsState()
@@ -402,6 +432,7 @@ fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
     if (showSettings) {
         SettingsScreen(
             viewModel = viewModel,
+            mpinPrefs = mpinPrefs,
             onExportExcel = {
                 val file = viewModel.exportReport(isPdf = false)
                 shareExportedFile(file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -485,6 +516,117 @@ fun MainAppContent(viewModel: MainViewModel, backupViewModel: BackupViewModel) {
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary)
                 ) {
                     Text("Close")
+                }
+            },
+            containerColor = CardBackground,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+}
+
+@Composable
+fun ForgotMpinScreen(
+    onDeleteAll: () -> Unit,
+    onBack: () -> Unit
+) {
+    var confirmDelete by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BackgroundDark)
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Lock,
+            contentDescription = null,
+            tint = ExpenseRed,
+            modifier = Modifier.size(48.dp)
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            text = "Forgot MPIN",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "Money Minder is 100% offline. There is no recovery server.\n\nThe only way to reset your MPIN is to delete all local data.",
+            style = MaterialTheme.typography.bodyMedium.copy(
+                color = TextSecondary,
+                lineHeight = 22.sp
+            ),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Button(
+            onClick = { confirmDelete = true },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ExpenseRed,
+                contentColor = Color.White
+            ),
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+        ) {
+            Text("Delete All Data & Reset MPIN", fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = onBack,
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+            border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+        ) {
+            Text("Go Back", fontWeight = FontWeight.SemiBold)
+        }
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Are you sure?", fontWeight = FontWeight.Bold, color = ExpenseRed) },
+            text = {
+                Text(
+                    "This will permanently delete all transactions, accounts, categories, and reset your MPIN. This cannot be undone.",
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        confirmDelete = false
+                        onDeleteAll()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ExpenseRed, contentColor = Color.White),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Delete Everything", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { confirmDelete = false },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary)
+                ) {
+                    Text("Cancel")
                 }
             },
             containerColor = CardBackground,

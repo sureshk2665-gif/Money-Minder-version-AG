@@ -117,3 +117,19 @@ data class ImportItem(
     val isDuplicate: Boolean = false,
     val isSelected: Boolean = true
 )
+
+data class HeldMoneyEntry(
+    val id: Long = 0,
+    val friendName: String,
+    val totalAmount: Double,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+data class HeldMoneyTransaction(
+    val id: Long = 0,
+    val heldMoneyId: Long,
+    val type: String, // "SPENT" or "RETURNED"
+    val amount: Double,
+    val note: String = "",
+    val createdAt: Long = System.currentTimeMillis()
+)

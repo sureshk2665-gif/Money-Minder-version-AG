@@ -15,6 +15,8 @@ import com.example.moneyminder.data.model.AccountType
 import com.example.moneyminder.data.model.CategoryEntity
 import com.example.moneyminder.data.model.CategorySpending
 import com.example.moneyminder.data.model.DaySummary
+import com.example.moneyminder.data.model.HeldMoneyEntry
+import com.example.moneyminder.data.model.HeldMoneyTransaction
 import com.example.moneyminder.data.model.ImportItem
 import com.example.moneyminder.data.model.BudgetItem
 import com.example.moneyminder.data.model.InboxSmsMessage
@@ -590,6 +592,60 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             dao.deleteLentReturnItem(id)
             loadBudgetData()
+        }
+    }
+
+    // ─── Held Money ───
+
+    private val _heldMoneyEntries = MutableStateFlow<List<HeldMoneyEntry>>(emptyList())
+    val heldMoneyEntries: StateFlow<List<HeldMoneyEntry>> = _heldMoneyEntries.asStateFlow()
+
+    private val _heldMoneyTransactions = MutableStateFlow<Map<Long, List<HeldMoneyTransaction>>>(emptyMap())
+    val heldMoneyTransactions: StateFlow<Map<Long, List<HeldMoneyTransaction>>> = _heldMoneyTransactions.asStateFlow()
+
+    fun loadHeldMoneyData() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val entries = dao.getHeldMoneyEntries()
+            val txMap = entries.associate { it.id to dao.getHeldMoneyTransactions(it.id) }
+            withContext(Dispatchers.Main) {
+                _heldMoneyEntries.value = entries
+                _heldMoneyTransactions.value = txMap
+            }
+        }
+    }
+
+    fun addHeldMoneyEntry(friendName: String, amount: Double) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val entry = HeldMoneyEntry(friendName = friendName, totalAmount = amount)
+            dao.insertHeldMoneyEntry(entry)
+            loadHeldMoneyData()
+        }
+    }
+
+    fun removeHeldMoneyEntry(id: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.deleteHeldMoneyEntry(id)
+            loadHeldMoneyData()
+        }
+    }
+
+    fun addHeldMoneyTransaction(heldMoneyId: Long, type: String, amount: Double, note: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val tx = HeldMoneyTransaction(
+                heldMoneyId = heldMoneyId,
+                type = type,
+                amount = amount,
+                note = note.trim()
+            )
+            dao.insertHeldMoneyTransaction(tx)
+            loadHeldMoneyData()
+        }
+    }
+
+    fun removeHeldMoneyTransaction(id: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.deleteHeldMoneyTransaction(id)
+            loadHeldMoneyData()
         }
     }
 

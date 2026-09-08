@@ -12,7 +12,7 @@ class MoneyMinderDatabaseHelper(context: Context) : SQLiteOpenHelper(
 ) {
     companion object {
         const val DATABASE_NAME = "moneyminder.db"
-        const val DATABASE_VERSION = 2
+        const val DATABASE_VERSION = 3
 
         const val TABLE_TRANSACTIONS = "transactions"
         const val COL_ID = "id"
@@ -58,6 +58,20 @@ class MoneyMinderDatabaseHelper(context: Context) : SQLiteOpenHelper(
         const val COL_SAL_AMOUNT = "amount"
         const val COL_SAL_YEAR = "year"
         const val COL_SAL_MONTH = "month"
+
+        const val TABLE_HELD_MONEY = "held_money"
+        const val COL_HM_ID = "id"
+        const val COL_HM_FRIEND_NAME = "friend_name"
+        const val COL_HM_TOTAL_AMOUNT = "total_amount"
+        const val COL_HM_CREATED = "created_at"
+
+        const val TABLE_HELD_MONEY_TX = "held_money_transactions"
+        const val COL_HMT_ID = "id"
+        const val COL_HMT_HELD_ID = "held_money_id"
+        const val COL_HMT_TYPE = "type"
+        const val COL_HMT_AMOUNT = "amount"
+        const val COL_HMT_NOTE = "note"
+        const val COL_HMT_CREATED = "created_at"
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -93,6 +107,7 @@ class MoneyMinderDatabaseHelper(context: Context) : SQLiteOpenHelper(
         db.execSQL("CREATE INDEX idx_trans_ref ON $TABLE_TRANSACTIONS ($COL_REF_NUMBER)")
 
         createBudgetTables(db)
+        createHeldMoneyTables(db)
     }
 
     private fun createBudgetTables(db: SQLiteDatabase) {
@@ -132,9 +147,35 @@ class MoneyMinderDatabaseHelper(context: Context) : SQLiteOpenHelper(
         """.trimIndent())
     }
 
+    private fun createHeldMoneyTables(db: SQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS $TABLE_HELD_MONEY (
+                $COL_HM_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                $COL_HM_FRIEND_NAME TEXT NOT NULL,
+                $COL_HM_TOTAL_AMOUNT REAL NOT NULL,
+                $COL_HM_CREATED INTEGER NOT NULL
+            )
+        """.trimIndent())
+
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS $TABLE_HELD_MONEY_TX (
+                $COL_HMT_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                $COL_HMT_HELD_ID INTEGER NOT NULL,
+                $COL_HMT_TYPE TEXT NOT NULL,
+                $COL_HMT_AMOUNT REAL NOT NULL,
+                $COL_HMT_NOTE TEXT,
+                $COL_HMT_CREATED INTEGER NOT NULL,
+                FOREIGN KEY ($COL_HMT_HELD_ID) REFERENCES $TABLE_HELD_MONEY($COL_HM_ID) ON DELETE CASCADE
+            )
+        """.trimIndent())
+    }
+
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
             createBudgetTables(db)
+        }
+        if (oldVersion < 3) {
+            createHeldMoneyTables(db)
         }
     }
 }
