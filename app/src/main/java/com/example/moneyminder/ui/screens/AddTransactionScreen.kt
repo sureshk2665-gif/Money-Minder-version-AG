@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -303,8 +304,8 @@ fun AddTransactionScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // 1. Large 3-Option Segmented Selector
                 Row(
@@ -373,10 +374,10 @@ fun AddTransactionScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(16.dp))
                             .background(CardBackground)
-                            .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
-                            .padding(18.dp)
+                            .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
                     ) {
                         Column {
                             Text(
@@ -468,76 +469,65 @@ fun AddTransactionScreen(
                     }
                 }
 
-                // 2. Amount Input Card with Permanent ₹ Symbol OUTSIDE Text Box
+                // 2. Amount — label and field share one row to save height
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(CardBackground)
-                        .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
-                        .padding(18.dp)
+                        .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
                 ) {
-                    Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(
-                            text = "Amount",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = TextSecondary,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            text = "₹",
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 28.sp,
+                                color = when (selectedType) {
+                                    TransactionType.INCOME -> IncomeGreen
+                                    TransactionType.EXPENSE -> ExpenseRed
+                                    TransactionType.TRANSFER -> TextPrimary
+                                }
+                            ),
+                            modifier = Modifier.padding(end = 10.dp)
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            // Permanent ₹ Symbol placed outside text box
-                            Text(
-                                text = "₹",
-                                style = MaterialTheme.typography.displayLarge.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 34.sp,
-                                    color = when (selectedType) {
-                                        TransactionType.INCOME -> IncomeGreen
-                                        TransactionType.EXPENSE -> ExpenseRed
-                                        TransactionType.TRANSFER -> TextPrimary
-                                    }
-                                ),
-                                modifier = Modifier.padding(end = 12.dp)
-                            )
-
-                            OutlinedTextField(
-                                value = amountText,
-                                onValueChange = {
-                                    if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                                        amountText = it
-                                    }
-                                },
-                                placeholder = {
-                                    Text(
-                                        text = "0",
-                                        style = MaterialTheme.typography.displayMedium.copy(
-                                            color = TextSecondary,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                        OutlinedTextField(
+                            value = amountText,
+                            onValueChange = {
+                                if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                    amountText = it
+                                }
+                            },
+                            placeholder = {
+                                Text(
+                                    text = "0",
+                                    style = MaterialTheme.typography.headlineMedium.copy(
+                                        color = TextSecondary,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 26.sp
                                     )
-                                },
-                                textStyle = MaterialTheme.typography.displayMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
-                                ),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Color.Transparent,
-                                    unfocusedBorderColor = Color.Transparent,
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent
-                                ),
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
+                                )
+                            },
+                            textStyle = MaterialTheme.typography.headlineMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary,
+                                fontSize = 26.sp
+                            ),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
 
@@ -568,12 +558,12 @@ fun AddTransactionScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(CardBackground)
-                        .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
-                        .padding(18.dp)
+                        .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (isLendMode) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -679,39 +669,29 @@ fun AddTransactionScreen(
                     }
                 }
 
-                // 5. Date & Time Selection
+                // 5. Date, time and note share one card
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(CardBackground)
-                        .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
-                        .padding(18.dp)
+                        .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
                 ) {
-                    Column {
-                        Text(
-                            text = "Date & Time",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = TextSecondary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             // Date Button
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(10.dp))
                                     .background(CardBackgroundElevated)
-                                    .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
+                                    .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
                                     .clickable { showDatePicker = true }
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    .padding(horizontal = 10.dp, vertical = 9.dp),
                                 contentAlignment = Alignment.CenterStart
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -719,14 +699,15 @@ fun AddTransactionScreen(
                                         imageVector = Icons.Default.CalendarMonth,
                                         contentDescription = null,
                                         tint = TextSecondary,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(15.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = DateTimeUtils.formatDate(timestamp),
-                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                        style = MaterialTheme.typography.bodySmall.copy(
                                             color = TextPrimary,
-                                            fontWeight = FontWeight.Medium
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = 12.sp
                                         )
                                     )
                                 }
@@ -736,11 +717,11 @@ fun AddTransactionScreen(
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(10.dp))
                                     .background(CardBackgroundElevated)
-                                    .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
+                                    .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
                                     .clickable { showTimePicker = true }
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    .padding(horizontal = 10.dp, vertical = 9.dp),
                                 contentAlignment = Alignment.CenterStart
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -748,46 +729,27 @@ fun AddTransactionScreen(
                                         imageVector = Icons.Default.AccessTime,
                                         contentDescription = null,
                                         tint = TextSecondary,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(15.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = DateTimeUtils.formatTime(timestamp),
-                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                        style = MaterialTheme.typography.bodySmall.copy(
                                             color = TextPrimary,
-                                            fontWeight = FontWeight.Medium
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = 12.sp
                                         )
                                     )
                                 }
                             }
                         }
-                    }
-                }
-
-                // 6. Optional Note & Reference Number
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(CardBackground)
-                        .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
-                        .padding(18.dp)
-                ) {
-                    Column {
-                        Text(
-                            text = "Optional Note",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = TextSecondary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
 
                         OutlinedTextField(
                             value = noteText,
                             onValueChange = { noteText = it },
-                            placeholder = { Text("Add payment details, purpose, or reference", color = TextSecondary) },
+                            placeholder = { Text("Note (optional)", color = TextSecondary, fontSize = 12.sp) },
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = TextPrimary,
                                 unfocusedBorderColor = CardBorder,
@@ -796,8 +758,10 @@ fun AddTransactionScreen(
                                 focusedTextColor = TextPrimary,
                                 unfocusedTextColor = TextPrimary
                             ),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
                         )
                     }
                 }
@@ -814,18 +778,17 @@ fun AddTransactionScreen(
                     )
                 }
 
-                // 7. Action Buttons
+                // 7. Action Buttons — secondary actions share a row to save height
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.padding(top = 8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = 2.dp)
                 ) {
-                    // Save Transaction Button
                     Button(
                         onClick = { submitTransaction(addAnother = false) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp),
-                        shape = RoundedCornerShape(16.dp),
+                            .height(48.dp),
+                        shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = TextPrimary,
                             contentColor = Color.Black
@@ -840,30 +803,32 @@ fun AddTransactionScreen(
                         )
                     }
 
-                    // Save and Add Another Button
-                    OutlinedButton(
-                        onClick = { submitTransaction(addAnother = true) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)
-                    ) {
-                        Text("Save and Add Another", fontWeight = FontWeight.SemiBold)
-                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = { submitTransaction(addAnother = true) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(42.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)
+                        ) {
+                            Text("Save & Add Another", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        }
 
-                    // Cancel Button
-                    OutlinedButton(
-                        onClick = onCancel,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Transparent)
-                    ) {
-                        Text("Cancel")
+                        OutlinedButton(
+                            onClick = onCancel,
+                            modifier = Modifier
+                                .weight(0.5f)
+                                .height(42.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.Transparent)
+                        ) {
+                            Text("Cancel", fontSize = 13.sp)
+                        }
                     }
                 }
             }
@@ -1060,35 +1025,25 @@ private fun CategoryPickerCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(CardBackground)
-            .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
-            .padding(18.dp)
+            .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Column {
-            Text(
-                text = "Category",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    color = TextSecondary,
-                    fontWeight = FontWeight.SemiBold
-                )
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Box(modifier = Modifier.weight(1f)) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(CardBackgroundElevated)
-                            .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
+                            .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
                             .clickable { expanded = true }
-                            .padding(horizontal = 14.dp, vertical = 14.dp)
+                            .padding(horizontal = 12.dp, vertical = 11.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1097,15 +1052,16 @@ private fun CategoryPickerCard(
                         ) {
                             Text(
                                 text = categoryText.ifBlank { "Select category" },
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    color = if (categoryText.isBlank()) TextSecondary else TextPrimary
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = if (categoryText.isBlank()) TextSecondary else TextPrimary,
+                                    fontSize = 13.sp
                                 )
                             )
                             Icon(
                                 imageVector = Icons.Default.ArrowDropDown,
                                 contentDescription = "Open categories",
                                 tint = TextSecondary,
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
@@ -1161,10 +1117,10 @@ private fun CategoryPickerCard(
                 // Green plus: add a new category
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(10.dp))
                         .background(IncomeGreen.copy(alpha = 0.18f))
-                        .border(1.dp, IncomeGreen, RoundedCornerShape(12.dp))
+                        .border(1.dp, IncomeGreen, RoundedCornerShape(10.dp))
                         .clickable {
                             showAddField = !showAddField
                             if (!showAddField) newCategoryText = ""
@@ -1175,7 +1131,7 @@ private fun CategoryPickerCard(
                         imageVector = if (showAddField) Icons.Default.Close else Icons.Default.Add,
                         contentDescription = if (showAddField) "Cancel add category" else "Add category",
                         tint = IncomeGreen,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(19.dp)
                     )
                 }
             }
