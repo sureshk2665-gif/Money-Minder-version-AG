@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.moneyminder.data.model.BudgetItem
+import com.example.moneyminder.data.model.CategorySpending
 import com.example.moneyminder.data.model.HeldMoneyEntry
 import com.example.moneyminder.data.model.HeldMoneyTransaction
 import com.example.moneyminder.data.model.LentReturnItem
@@ -86,6 +87,8 @@ fun BudgetScreen(
     val lentReturnItems by viewModel.lentReturnItems.collectAsState()
     val heldMoneyEntries by viewModel.heldMoneyEntries.collectAsState()
     val heldMoneyTransactions by viewModel.heldMoneyTransactions.collectAsState()
+    val expenseByCategory by viewModel.expenseByCategory.collectAsState()
+    val incomeByCategory by viewModel.incomeByCategory.collectAsState()
 
     LaunchedEffect(selectedYear, selectedMonth) {
         viewModel.loadBudgetData()
@@ -144,6 +147,14 @@ fun BudgetScreen(
                     onAddItem = { name, amount, type -> viewModel.addLentReturnItem(name, amount, type) },
                     onToggleDone = { id, done -> viewModel.toggleLentReturnDone(id, done) },
                     onRemove = { id -> viewModel.removeLentReturnItem(id) }
+                )
+            }
+
+            // ─── Category Report Section ───
+            item {
+                CategoryReportSection(
+                    expenseByCategory = expenseByCategory,
+                    incomeByCategory = incomeByCategory
                 )
             }
 
@@ -505,8 +516,10 @@ private fun IncomesReturnsSection(
     var selectedType by remember { mutableStateOf("LENT") }
 
     val lentItems = items.filter { it.type == "LENT" }
+    val borrowedItems = items.filter { it.type == "BORROWED" }
     val returnItems = items.filter { it.type == "RETURN" }
     val totalLent = lentItems.sumOf { it.amount }
+    val totalBorrowed = borrowedItems.sumOf { it.amount }
     val totalReturned = returnItems.sumOf { it.amount }
     val totalRecovered = lentItems.filter { it.isReturned }.sumOf { it.amount }
 
@@ -553,8 +566,13 @@ private fun IncomesReturnsSection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                listOf("LENT" to "Lent", "RETURN" to "Return").forEach { (type, label) ->
+                listOf("LENT" to "Lent", "BORROWED" to "Borrowed", "RETURN" to "Return").forEach { (type, label) ->
                     val isSelected = selectedType == type
+                    val typeTint = when (type) {
+                        "LENT" -> TransferBlueGrey
+                        "BORROWED" -> WalletAccent
+                        else -> IncomeGreen
+                    }
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -562,9 +580,7 @@ private fun IncomesReturnsSection(
                             .background(if (isSelected) CardBackgroundElevated else Color.Transparent)
                             .border(
                                 1.dp,
-                                if (isSelected) {
-                                    if (type == "LENT") TransferBlueGrey else IncomeGreen
-                                } else CardBorderSubtle,
+                                if (isSelected) typeTint else CardBorderSubtle,
                                 RoundedCornerShape(12.dp)
                             )
                             .clickable { selectedType = type }
@@ -575,9 +591,8 @@ private fun IncomesReturnsSection(
                             text = label,
                             style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) {
-                                    if (type == "LENT") TransferBlueGrey else IncomeGreen
-                                } else TextSecondary
+                                color = if (isSelected) typeTint else TextSecondary,
+                                fontSize = 13.sp
                             )
                         )
                     }
@@ -670,11 +685,32 @@ private fun IncomesReturnsSection(
                 }
             }
 
+            // Borrowed items
+            if (borrowedItems.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Money Borrowed",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = WalletAccent
+                    )
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                borrowedItems.forEach { item ->
+                    LentReturnItemRow(
+                        item = item,
+                        onToggleDone = { onToggleDone(item.id, !item.isReturned) },
+                        onRemove = { onRemove(item.id) }
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
+            }
+
             // Return items
             if (returnItems.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Returns Received",
+                    text = "Returns",
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = IncomeGreen
@@ -710,6 +746,13 @@ private fun IncomesReturnsSection(
                         )
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Borrowed", style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary))
+                        Text(
+                            "₹${CurrencyFormatter.formatPlain(totalBorrowed)}",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = WalletAccent)
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Recovered", style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary))
                         Text(
                             "₹${CurrencyFormatter.formatPlain(totalRecovered)}",
@@ -736,8 +779,11 @@ private fun LentReturnItemRow(
     onRemove: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
-    val isLent = item.type == "LENT"
-    val accentColor = if (isLent) TransferBlueGrey else IncomeGreen
+    val accentColor = when (item.type) {
+        "LENT" -> TransferBlueGrey
+        "BORROWED" -> WalletAccent
+        else -> IncomeGreen
+    }
 
     Box {
         Row(
@@ -795,7 +841,7 @@ private fun LentReturnItemRow(
             DropdownMenuItem(
                 text = {
                     Text(
-                        if (item.isReturned) "Undo" else if (isLent) "Returned" else "Done",
+                        if (item.isReturned) "Undo" else if (item.type == "LENT") "Returned" else "Done",
                         color = IncomeGreen,
                         fontWeight = FontWeight.Bold
                     )
@@ -1147,6 +1193,156 @@ private fun HeldMoneyCard(
                 text = { Text("Delete Entry", color = ExpenseRed, fontWeight = FontWeight.Bold) },
                 onClick = { showEntryMenu = false; onRemoveEntry() }
             )
+        }
+    }
+}
+
+@Composable
+private fun CategoryReportSection(
+    expenseByCategory: List<CategorySpending>,
+    incomeByCategory: List<CategorySpending>
+) {
+    var showIncome by remember { mutableStateOf(false) }
+    val rows = if (showIncome) incomeByCategory else expenseByCategory
+    val accent = if (showIncome) IncomeGreen else ExpenseRed
+    val total = rows.sumOf { it.totalAmount }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(CardBackground)
+            .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
+            .padding(16.dp)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Category Report",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                )
+                Text(
+                    text = CurrencyFormatter.format(total),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = accent
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Spend / Income toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(CardBackgroundElevated)
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                listOf(false to "Spending", true to "Income").forEach { (isIncome, label) ->
+                    val active = showIncome == isIncome
+                    val tint = if (isIncome) IncomeGreen else ExpenseRed
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(11.dp))
+                            .background(if (active) tint.copy(alpha = 0.18f) else Color.Transparent)
+                            .border(
+                                1.dp,
+                                if (active) tint else Color.Transparent,
+                                RoundedCornerShape(11.dp)
+                            )
+                            .clickable { showIncome = isIncome }
+                            .padding(vertical = 9.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = if (active) tint else TextSecondary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            if (rows.isEmpty()) {
+                Text(
+                    text = if (showIncome) {
+                        "No income recorded this month."
+                    } else {
+                        "No spending recorded this month."
+                    },
+                    style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rows.forEach { row ->
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = row.categoryName,
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            color = TextPrimary,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    )
+                                    Text(
+                                        text = "${row.transactionCount} ${if (row.transactionCount == 1) "entry" else "entries"} · ${row.percentage.toInt()}%",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = TextSecondary,
+                                            fontSize = 11.sp
+                                        )
+                                    )
+                                }
+                                Text(
+                                    text = CurrencyFormatter.format(row.totalAmount),
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        color = accent,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Share-of-total bar
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(CardBackgroundElevated)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth((row.percentage / 100f).coerceIn(0.02f, 1f))
+                                        .height(6.dp)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(accent)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
