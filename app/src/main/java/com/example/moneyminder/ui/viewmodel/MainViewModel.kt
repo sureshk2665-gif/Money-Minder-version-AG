@@ -20,6 +20,7 @@ import com.example.moneyminder.data.model.HeldMoneyTransaction
 import com.example.moneyminder.data.model.ImportItem
 import com.example.moneyminder.data.model.BudgetItem
 import com.example.moneyminder.data.model.InboxSmsMessage
+import com.example.moneyminder.data.model.LendReturnKind
 import com.example.moneyminder.data.model.LentReturnItem
 import com.example.moneyminder.data.model.MonthlySummary
 import com.example.moneyminder.data.model.SmsCandidate
@@ -322,6 +323,73 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return dao.getCategories(type)
     }
 
+    fun addCategory(name: String, type: TransactionType, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val added = dao.addCategory(name, type)
+            withContext(Dispatchers.Main) {
+                _statusMessage.value = if (added) "Category added" else "Category already exists"
+                onDone(added)
+            }
+        }
+    }
+
+    fun deleteCategory(id: Long, onDone: () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.deleteCategory(id)
+            withContext(Dispatchers.Main) {
+                _statusMessage.value = "Category deleted"
+                onDone()
+            }
+        }
+    }
+
+    /**
+     * Records a lend/borrow/return as a real income or expense against an account,
+     * and mirrors it into the Budget section's Lents & Returns list.
+     */
+    fun saveLendReturn(
+        kind: LendReturnKind,
+        personName: String,
+        amount: Double,
+        account: AccountType,
+        timestamp: Long,
+        note: String = "",
+        onSuccess: () -> Unit = {}
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val person = personName.trim()
+            val entity = TransactionEntity(
+                type = kind.transactionType,
+                amount = amount,
+                category = kind.categoryLabel,
+                fromAccount = if (kind.isMoneyIn) null else account,
+                toAccount = if (kind.isMoneyIn) account else null,
+                timestamp = timestamp,
+                note = listOf(person, note.trim()).filter { it.isNotBlank() }.joinToString(" — ")
+            )
+            dao.insertTransaction(entity)
+
+            val cal = java.util.Calendar.getInstance().apply { timeInMillis = timestamp }
+            dao.insertLentReturnItem(
+                LentReturnItem(
+                    personName = person,
+                    amount = amount,
+                    type = kind.budgetType,
+                    isReturned = kind == LendReturnKind.RETURN_PAID || kind == LendReturnKind.RETURN_RECEIVED,
+                    year = cal.get(java.util.Calendar.YEAR),
+                    month = cal.get(java.util.Calendar.MONTH) + 1
+                )
+            )
+
+            withContext(Dispatchers.Main) {
+                _statusMessage.value = "${kind.displayName} saved"
+                _prefilledTransaction.value = null
+                loadBudgetData()
+                onSuccess()
+            }
+        }
+    }
+
     // SMS Parsing Flow
     fun parsePastedSms(text: String) {
         viewModelScope.launch(Dispatchers.Default) {
@@ -516,6 +584,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _lentReturnItems = MutableStateFlow<List<LentReturnItem>>(emptyList())
     val lentReturnItems: StateFlow<List<LentReturnItem>> = _lentReturnItems.asStateFlow()
 
+    private val _expenseByCategory = MutableStateFlow<List<CategorySpending>>(emptyList())
+    val expenseByCategory: StateFlow<List<CategorySpending>> = _expenseByCategory.asStateFlow()
+
+    private val _incomeByCategory = MutableStateFlow<List<CategorySpending>>(emptyList())
+    val incomeByCategory: StateFlow<List<CategorySpending>> = _incomeByCategory.asStateFlow()
+
     fun loadBudgetData() {
         viewModelScope.launch(Dispatchers.IO) {
             val year = _selectedYear.value
@@ -523,10 +597,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val sal = dao.getSalary(year, month)
             val items = dao.getBudgetItems(year, month)
             val lrItems = dao.getLentReturnItems(year, month)
+            val expenseCats = dao.getCategoryTotalsByType(year, month, TransactionType.EXPENSE)
+            val incomeCats = dao.getCategoryTotalsByType(year, month, TransactionType.INCOME)
             withContext(Dispatchers.Main) {
                 _salary.value = sal
                 _budgetItems.value = items
                 _lentReturnItems.value = lrItems
+                _expenseByCategory.value = expenseCats
+                _incomeByCategory.value = incomeCats
             }
         }
     }

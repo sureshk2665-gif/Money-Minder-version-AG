@@ -28,10 +28,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -62,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import com.example.moneyminder.data.model.AccountBalances
 import com.example.moneyminder.data.model.AccountType
 import com.example.moneyminder.data.model.CategoryEntity
+import com.example.moneyminder.data.model.LendReturnKind
 import com.example.moneyminder.data.model.TransactionType
 import com.example.moneyminder.theme.BackgroundDark
 import com.example.moneyminder.theme.CardBackground
@@ -76,6 +80,7 @@ import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
 import com.example.moneyminder.theme.TransferBlueGrey
 import com.example.moneyminder.theme.TransferPillBg
+import com.example.moneyminder.theme.WalletAccent
 import com.example.moneyminder.ui.components.AppDatePickerDialog
 import com.example.moneyminder.ui.components.AppTimePickerDialog
 import com.example.moneyminder.ui.components.MoneyMinderHeader
@@ -96,7 +101,10 @@ fun AddTransactionScreen(
     val balances by viewModel.balances.collectAsState()
     val prefilledTx by viewModel.prefilledTransaction.collectAsState()
 
-    var selectedType by remember { mutableStateOf(initialType) }
+    var selectedTab by remember { mutableStateOf(EntryTab.fromType(initialType)) }
+    var lendKind by remember { mutableStateOf(LendReturnKind.BORROWED) }
+    var personName by remember { mutableStateOf("") }
+    var lendAccount by remember { mutableStateOf(AccountType.BANK) }
     var amountText by remember { mutableStateOf("") }
     var categoryText by remember { mutableStateOf("") }
     var fromAccount by remember { mutableStateOf(AccountType.BANK) }
@@ -111,12 +119,21 @@ fun AddTransactionScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     var savedCategories by remember { mutableStateOf<List<CategoryEntity>>(emptyList()) }
+    var categoryRefreshKey by remember { mutableStateOf(0) }
+
+    val isLendMode = selectedTab == EntryTab.LEND_RETURN
+    val selectedType = when (selectedTab) {
+        EntryTab.EXPENSE -> TransactionType.EXPENSE
+        EntryTab.INCOME -> TransactionType.INCOME
+        EntryTab.TRANSFER -> TransactionType.TRANSFER
+        EntryTab.LEND_RETURN -> lendKind.transactionType
+    }
 
     // Apply pending transaction type from quick actions
     val pendingType by viewModel.pendingTransactionType.collectAsState()
     LaunchedEffect(pendingType) {
         pendingType?.let { type ->
-            selectedType = type
+            selectedTab = EntryTab.fromType(type)
             viewModel.clearPendingTransactionType()
         }
     }
@@ -124,7 +141,7 @@ fun AddTransactionScreen(
     // Load pre-filled transaction if available
     LaunchedEffect(prefilledTx) {
         prefilledTx?.let { tx ->
-            selectedType = tx.type
+            selectedTab = EntryTab.fromType(tx.type)
             amountText = if (tx.amount > 0) CurrencyFormatter.formatPlain(tx.amount) else ""
             categoryText = tx.category
             if (tx.fromAccount != null) fromAccount = tx.fromAccount
@@ -155,8 +172,8 @@ fun AddTransactionScreen(
         }
     }
 
-    // Refresh saved categories when type changes
-    LaunchedEffect(selectedType) {
+    // Refresh saved categories when type changes or the list is edited
+    LaunchedEffect(selectedType, categoryRefreshKey) {
         if (selectedType != TransactionType.TRANSFER) {
             savedCategories = viewModel.getSavedCategories(selectedType)
         }
@@ -168,6 +185,7 @@ fun AddTransactionScreen(
         amountText = ""
         categoryText = ""
         noteText = ""
+        personName = ""
         referenceNumber = null
         timestamp = System.currentTimeMillis()
         errorMessage = null
@@ -177,6 +195,34 @@ fun AddTransactionScreen(
         val amount = amountText.toDoubleOrNull()
         if (amount == null || amount <= 0.0) {
             errorMessage = "Please enter a valid amount"
+            return
+        }
+
+        if (isLendMode) {
+            if (personName.isBlank()) {
+                errorMessage = "Please enter the person's name"
+                return
+            }
+            if (!lendKind.isMoneyIn) {
+                val available = balances.getBalance(lendAccount)
+                if (amount > available) {
+                    errorMessage = "Insufficient balance in ${lendAccount.displayName}. Available: ${CurrencyFormatter.format(available)}"
+                    return
+                }
+            }
+            errorMessage = null
+            viewModel.saveLendReturn(
+                kind = lendKind,
+                personName = personName,
+                amount = amount,
+                account = lendAccount,
+                timestamp = timestamp,
+                note = noteText,
+                onSuccess = {
+                    showSuccessAnim = true
+                    if (addAnother) resetForm() else onCancel()
+                }
+            )
             return
         }
 
@@ -272,11 +318,11 @@ fun AddTransactionScreen(
                     // Expense Option (Dark Red 70% opacity)
                     SegmentedTabItem(
                         title = "Expense",
-                        isSelected = selectedType == TransactionType.EXPENSE,
+                        isSelected = selectedTab == EntryTab.EXPENSE,
                         activeBg = ExpensePillBg,
                         activeBorder = ExpenseRed,
                         onClick = {
-                            selectedType = TransactionType.EXPENSE
+                            selectedTab = EntryTab.EXPENSE
                             errorMessage = null
                         },
                         modifier = Modifier.weight(1f)
@@ -285,11 +331,11 @@ fun AddTransactionScreen(
                     // Income Option (Dark Green 70% opacity)
                     SegmentedTabItem(
                         title = "Income",
-                        isSelected = selectedType == TransactionType.INCOME,
+                        isSelected = selectedTab == EntryTab.INCOME,
                         activeBg = IncomePillBg,
                         activeBorder = IncomeGreen,
                         onClick = {
-                            selectedType = TransactionType.INCOME
+                            selectedTab = EntryTab.INCOME
                             errorMessage = null
                         },
                         modifier = Modifier.weight(1f)
@@ -298,15 +344,128 @@ fun AddTransactionScreen(
                     // Transfer Option (Dark Charcoal / Muted Slate 70% opacity)
                     SegmentedTabItem(
                         title = "Transfer",
-                        isSelected = selectedType == TransactionType.TRANSFER,
+                        isSelected = selectedTab == EntryTab.TRANSFER,
                         activeBg = TransferPillBg,
                         activeBorder = TransferBlueGrey,
                         onClick = {
-                            selectedType = TransactionType.TRANSFER
+                            selectedTab = EntryTab.TRANSFER
                             errorMessage = null
                         },
                         modifier = Modifier.weight(1f)
                     )
+
+                    // Lend & Return Option
+                    SegmentedTabItem(
+                        title = "Lend",
+                        isSelected = selectedTab == EntryTab.LEND_RETURN,
+                        activeBg = WalletAccent.copy(alpha = 0.22f),
+                        activeBorder = WalletAccent,
+                        onClick = {
+                            selectedTab = EntryTab.LEND_RETURN
+                            errorMessage = null
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // Lend & Return: direction + person
+                if (isLendMode) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(CardBackground)
+                            .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
+                            .padding(18.dp)
+                    ) {
+                        Column {
+                            Text(
+                                text = "What happened?",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = TextSecondary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                LendReturnKind.entries.forEach { kind ->
+                                    val active = lendKind == kind
+                                    val tint = if (kind.isMoneyIn) IncomeGreen else ExpenseRed
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(14.dp))
+                                            .background(if (active) tint.copy(alpha = 0.18f) else CardBackgroundElevated)
+                                            .border(
+                                                1.dp,
+                                                if (active) tint else CardBorderSubtle,
+                                                RoundedCornerShape(14.dp)
+                                            )
+                                            .clickable {
+                                                lendKind = kind
+                                                errorMessage = null
+                                            }
+                                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                                    ) {
+                                        Text(
+                                            text = kind.displayName,
+                                            style = MaterialTheme.typography.labelMedium.copy(
+                                                color = if (active) tint else TextSecondary,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = if (lendKind.isMoneyIn) {
+                                    "Money comes in — recorded as Income"
+                                } else {
+                                    "Money goes out — recorded as Expense"
+                                },
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = if (lendKind.isMoneyIn) IncomeGreen else ExpenseRed,
+                                    fontSize = 12.sp
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            Text(
+                                text = "Person",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = TextSecondary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = personName,
+                                onValueChange = { personName = it },
+                                placeholder = { Text("Who? e.g. Ravi", color = TextSecondary) },
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = WalletAccent,
+                                    unfocusedBorderColor = CardBorder,
+                                    focusedContainerColor = CardBackgroundElevated,
+                                    unfocusedContainerColor = CardBackgroundElevated,
+                                    focusedTextColor = TextPrimary,
+                                    unfocusedTextColor = TextPrimary
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
                 }
 
                 // 2. Amount Input Card with Permanent ₹ Symbol OUTSIDE Text Box
@@ -383,77 +542,26 @@ fun AddTransactionScreen(
                 }
 
                 // 3. Category Field (Only for Expense & Income)
-                if (selectedType != TransactionType.TRANSFER) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(CardBackground)
-                            .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
-                            .padding(18.dp)
-                    ) {
-                        Column {
-                            Text(
-                                text = "Category",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    color = TextSecondary,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            OutlinedTextField(
-                                value = categoryText,
-                                onValueChange = { categoryText = it },
-                                placeholder = { Text("e.g. Salary, LIC, Groceries, Dinner", color = TextSecondary) },
-                                singleLine = true,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = TextPrimary,
-                                    unfocusedBorderColor = CardBorder,
-                                    focusedContainerColor = CardBackgroundElevated,
-                                    unfocusedContainerColor = CardBackgroundElevated,
-                                    focusedTextColor = TextPrimary,
-                                    unfocusedTextColor = TextPrimary
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            // Saved Categories Chips (starts empty, remembers saved)
-                            if (savedCategories.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Text(
-                                    text = "Recent / Saved Categories",
-                                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    savedCategories.take(8).forEach { cat ->
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(16.dp))
-                                                .background(CardBackgroundElevated)
-                                                .border(1.dp, CardBorderSubtle, RoundedCornerShape(16.dp))
-                                                .clickable { categoryText = cat.name }
-                                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                                        ) {
-                                            Text(
-                                                text = cat.name,
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    color = TextSecondary,
-                                                    fontWeight = FontWeight.Medium
-                                                )
-                                            )
-                                        }
-                                    }
+                if (selectedType != TransactionType.TRANSFER && !isLendMode) {
+                    CategoryPickerCard(
+                        categoryText = categoryText,
+                        savedCategories = savedCategories,
+                        onCategorySelected = { categoryText = it },
+                        onAddCategory = { name ->
+                            viewModel.addCategory(name, selectedType) { added ->
+                                if (added) {
+                                    categoryText = name.trim()
+                                    categoryRefreshKey++
                                 }
                             }
+                        },
+                        onDeleteCategory = { cat ->
+                            viewModel.deleteCategory(cat.id) {
+                                if (categoryText.equals(cat.name, ignoreCase = true)) categoryText = ""
+                                categoryRefreshKey++
+                            }
                         }
-                    }
+                    )
                 }
 
                 // 4. Account Selectors
@@ -466,7 +574,35 @@ fun AddTransactionScreen(
                         .padding(18.dp)
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        when (selectedType) {
+                        if (isLendMode) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (lendKind.isMoneyIn) "Received In" else "Paid From",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        color = TextSecondary,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                                if (!lendKind.isMoneyIn) {
+                                    Text(
+                                        text = "Available: ${CurrencyFormatter.format(balances.getBalance(lendAccount))}",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = TextSecondary,
+                                            fontSize = 11.sp
+                                        )
+                                    )
+                                }
+                            }
+                            AccountSelectorRow(
+                                selected = lendAccount,
+                                onSelect = { lendAccount = it },
+                                accounts = listOf(AccountType.BANK, AccountType.CASH)
+                            )
+                        } else when (selectedType) {
                             TransactionType.EXPENSE -> {
                                 Text(
                                     text = "Paid From",
@@ -888,6 +1024,207 @@ private fun AccountSelectorRow(
                             color = if (isSelected) TextPrimary else TextSecondary
                         )
                     )
+                }
+            }
+        }
+    }
+}
+
+enum class EntryTab {
+    EXPENSE,
+    INCOME,
+    TRANSFER,
+    LEND_RETURN;
+
+    companion object {
+        fun fromType(type: TransactionType): EntryTab = when (type) {
+            TransactionType.EXPENSE -> EXPENSE
+            TransactionType.INCOME -> INCOME
+            TransactionType.TRANSFER -> TRANSFER
+        }
+    }
+}
+
+@Composable
+private fun CategoryPickerCard(
+    categoryText: String,
+    savedCategories: List<CategoryEntity>,
+    onCategorySelected: (String) -> Unit,
+    onAddCategory: (String) -> Unit,
+    onDeleteCategory: (CategoryEntity) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var showAddField by remember { mutableStateOf(false) }
+    var newCategoryText by remember { mutableStateOf("") }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(CardBackground)
+            .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
+            .padding(18.dp)
+    ) {
+        Column {
+            Text(
+                text = "Category",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    color = TextSecondary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(CardBackgroundElevated)
+                            .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
+                            .clickable { expanded = true }
+                            .padding(horizontal = 14.dp, vertical = 14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = categoryText.ifBlank { "Select category" },
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = if (categoryText.isBlank()) TextSecondary else TextPrimary
+                                )
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = "Open categories",
+                                tint = TextSecondary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.fillMaxWidth(0.7f)
+                    ) {
+                        if (savedCategories.isEmpty()) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = "No categories yet — tap + to add",
+                                        style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                                    )
+                                },
+                                onClick = { expanded = false }
+                            )
+                        } else {
+                            savedCategories.forEach { cat ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = cat.name,
+                                            style = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary)
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Remove,
+                                            contentDescription = "Delete ${cat.name}",
+                                            tint = ExpenseRed,
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                                .clip(CircleShape)
+                                                .clickable {
+                                                    expanded = false
+                                                    onDeleteCategory(cat)
+                                                }
+                                        )
+                                    },
+                                    onClick = {
+                                        onCategorySelected(cat.name)
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Green plus: add a new category
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(IncomeGreen.copy(alpha = 0.18f))
+                        .border(1.dp, IncomeGreen, RoundedCornerShape(12.dp))
+                        .clickable {
+                            showAddField = !showAddField
+                            if (!showAddField) newCategoryText = ""
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (showAddField) Icons.Default.Close else Icons.Default.Add,
+                        contentDescription = if (showAddField) "Cancel add category" else "Add category",
+                        tint = IncomeGreen,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
+            AnimatedVisibility(
+                visible = showAddField,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = newCategoryText,
+                            onValueChange = { newCategoryText = it },
+                            placeholder = { Text("New category name", color = TextSecondary) },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = IncomeGreen,
+                                unfocusedBorderColor = CardBorderSubtle,
+                                focusedContainerColor = CardBackgroundElevated,
+                                unfocusedContainerColor = CardBackgroundElevated,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Button(
+                            onClick = {
+                                if (newCategoryText.isNotBlank()) {
+                                    onAddCategory(newCategoryText)
+                                    newCategoryText = ""
+                                    showAddField = false
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = IncomeGreen,
+                                contentColor = Color.Black
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.height(52.dp)
+                        ) {
+                            Text("Save", fontWeight = FontWeight.Bold, color = Color.Black)
+                        }
+                    }
                 }
             }
         }

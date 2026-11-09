@@ -539,6 +539,80 @@ class TransactionDao(context: Context) {
     }
 
     /**
+     * Category totals for a given transaction type within a month, for the Budget report.
+     */
+    @Synchronized
+    fun getCategoryTotalsByType(year: Int, month: Int, type: TransactionType): List<CategorySpending> {
+        val startMillis = DateTimeUtils.getStartOfMonth(year, month)
+        val endMillis = DateTimeUtils.getEndOfMonth(year, month)
+
+        val matching = getAllCalculatedTransactions().filter { tx ->
+            tx.type == type && tx.timestamp in startMillis..endMillis
+        }
+
+        val total = matching.sumOf { it.amount }
+        if (total <= 0.0) return emptyList()
+
+        return matching
+            .groupBy { it.category.ifBlank { "Uncategorized" } }
+            .map { (cat, txList) ->
+                val catTotal = txList.sumOf { it.amount }
+                CategorySpending(
+                    categoryName = cat,
+                    totalAmount = catTotal,
+                    percentage = ((catTotal / total) * 100).toFloat(),
+                    transactionCount = txList.size
+                )
+            }
+            .sortedByDescending { it.totalAmount }
+    }
+
+    /**
+     * Add a category manually, without recording a transaction against it.
+     */
+    @Synchronized
+    fun addCategory(name: String, type: TransactionType): Boolean {
+        val trimmed = name.trim()
+        if (trimmed.isBlank()) return false
+        val db = dbHelper.writableDatabase
+
+        val existing = db.query(
+            MoneyMinderDatabaseHelper.TABLE_CATEGORIES,
+            arrayOf(MoneyMinderDatabaseHelper.COL_CAT_ID),
+            "${MoneyMinderDatabaseHelper.COL_CAT_NAME} = ? COLLATE NOCASE AND ${MoneyMinderDatabaseHelper.COL_CAT_TYPE} = ?",
+            arrayOf(trimmed, type.name),
+            null,
+            null,
+            null
+        )
+        existing.use { if (it.moveToFirst()) return false }
+
+        val values = ContentValues().apply {
+            put(MoneyMinderDatabaseHelper.COL_CAT_NAME, trimmed)
+            put(MoneyMinderDatabaseHelper.COL_CAT_TYPE, type.name)
+            put(MoneyMinderDatabaseHelper.COL_CAT_USAGE_COUNT, 0)
+            put(MoneyMinderDatabaseHelper.COL_CAT_LAST_USED, System.currentTimeMillis())
+        }
+        db.insert(MoneyMinderDatabaseHelper.TABLE_CATEGORIES, null, values)
+        notifyDataChanged()
+        return true
+    }
+
+    /**
+     * Remove a saved category. Existing transactions keep their category text.
+     */
+    @Synchronized
+    fun deleteCategory(id: Long) {
+        val db = dbHelper.writableDatabase
+        db.delete(
+            MoneyMinderDatabaseHelper.TABLE_CATEGORIES,
+            "${MoneyMinderDatabaseHelper.COL_CAT_ID} = ?",
+            arrayOf(id.toString())
+        )
+        notifyDataChanged()
+    }
+
+    /**
      * Get transfer movement breakdown between accounts for selected month.
      */
     @Synchronized
