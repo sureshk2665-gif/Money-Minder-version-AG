@@ -119,14 +119,14 @@ private fun AccountCardItem(
                 scaleX = pressScale
                 scaleY = pressScale
             }
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(CardBackground)
-            .border(width = 1.dp, color = CardBorder, shape = RoundedCornerShape(16.dp))
+            .border(width = 1.dp, color = CardBorder, shape = RoundedCornerShape(20.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null
             ) { onClick() }
-            .padding(vertical = 12.dp, horizontal = 10.dp),
+            .padding(vertical = 15.dp, horizontal = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(

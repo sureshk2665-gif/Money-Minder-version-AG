@@ -1,16 +1,8 @@
 package com.example.moneyminder.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,57 +13,43 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.moneyminder.data.model.AccountType
-import com.example.moneyminder.data.model.TransactionEntity
 import com.example.moneyminder.data.model.TransactionType
 import com.example.moneyminder.theme.BackdropGradient
-import com.example.moneyminder.theme.CardBackground
-import com.example.moneyminder.theme.CardBackgroundElevated
-import com.example.moneyminder.theme.CardBorder
-import com.example.moneyminder.theme.CardBorderSubtle
-import com.example.moneyminder.theme.ExpenseCardBg
 import com.example.moneyminder.theme.ExpenseRed
-import com.example.moneyminder.theme.IncomeCardBg
 import com.example.moneyminder.theme.IncomeGreen
-import com.example.moneyminder.theme.TextDisabled
 import com.example.moneyminder.theme.TextMuted
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
 import com.example.moneyminder.theme.TransferBlueGrey
+import com.example.moneyminder.theme.VioletSoft
 import com.example.moneyminder.ui.components.AccountCardsRow
+import com.example.moneyminder.ui.components.AppCard
+import com.example.moneyminder.ui.components.GradientPillButton
+import com.example.moneyminder.ui.components.HeroCard
 import com.example.moneyminder.ui.components.MoneyMinderHeader
+import com.example.moneyminder.ui.components.PillChip
+import com.example.moneyminder.ui.components.SectionHeader
+import com.example.moneyminder.ui.components.StatBlock
 import com.example.moneyminder.ui.components.TransactionCard
 import com.example.moneyminder.ui.viewmodel.MainViewModel
 import com.example.moneyminder.util.CurrencyFormatter
@@ -94,7 +72,6 @@ fun HomeScreen(
             .fillMaxSize()
             .background(BackdropGradient)
     ) {
-        // App Header with Money Minder Logo, Month Picker & Settings Button
         MoneyMinderHeader(
             selectedYear = selectedYear,
             selectedMonth = selectedMonth,
@@ -104,74 +81,51 @@ fun HomeScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 90.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 4.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // 1. Primary Overall Balance Card
             item {
-                OverallBalanceCard(
+                BalanceHero(
                     overallBalance = balances.overallBalance,
                     monthlyIncome = monthlySummary.totalIncome,
                     monthlyExpense = monthlySummary.totalExpense,
-                    dateRangeText = monthlySummary.dateRangeText
-                )
-            }
-
-            // 2. Compact Account Cards (Bank, Wallet, Cash - Icons only, no text labels)
-            item {
-                AccountCardsRow(
-                    balances = balances,
-                    onAccountClick = { account ->
-                        viewModel.openAccountDetail(account)
-                    }
-                )
-            }
-
-            // 3. Monthly Transfer Movement Summary
-            item {
-                MonthlyTransferSummaryCard(
+                    dateRangeText = monthlySummary.dateRangeText,
                     transfersMoved = monthlySummary.totalTransfersMoved
                 )
             }
 
-            // 4. Quick Actions
             item {
-                QuickActionsSection(
-                    onAddExpense = { onNavigateToAdd(TransactionType.EXPENSE) },
-                    onAddIncome = { onNavigateToAdd(TransactionType.INCOME) },
-                    onTransfer = { onNavigateToAdd(TransactionType.TRANSFER) }
-                )
-            }
-
-            // 5. Overall Activity Header
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Overall Activity",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                    )
-                    Text(
-                        text = "${transactions.size} records",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextMuted
-                        )
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SectionHeader(title = "Accounts")
+                    AccountCardsRow(
+                        balances = balances,
+                        onAccountClick = { account -> viewModel.openAccountDetail(account) }
                     )
                 }
             }
 
-            // 6. Transaction Activity Feed
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SectionHeader(title = "Quick Add")
+                    QuickAddChips(
+                        onAddExpense = { onNavigateToAdd(TransactionType.EXPENSE) },
+                        onAddIncome = { onNavigateToAdd(TransactionType.INCOME) },
+                        onTransfer = { onNavigateToAdd(TransactionType.TRANSFER) }
+                    )
+                }
+            }
+
+            item {
+                SectionHeader(
+                    title = "Activity",
+                    actionLabel = if (transactions.isEmpty()) null else "${transactions.size} records"
+                )
+            }
+
             if (transactions.isEmpty()) {
                 item {
                     EmptyActivityView(
-                        onAddExpense = { onNavigateToAdd(TransactionType.EXPENSE) },
-                        onAddIncome = { onNavigateToAdd(TransactionType.INCOME) }
+                        onAddExpense = { onNavigateToAdd(TransactionType.EXPENSE) }
                     )
                 }
             } else {
@@ -191,346 +145,159 @@ fun HomeScreen(
 }
 
 @Composable
-private fun OverallBalanceCard(
+private fun BalanceHero(
     overallBalance: Double,
     monthlyIncome: Double,
     monthlyExpense: Double,
-    dateRangeText: String
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFF22222C),
-                        Color(0xFF16161C)
-                    )
-                )
-            )
-            .border(width = 1.dp, color = CardBorder, shape = RoundedCornerShape(24.dp))
-            .padding(20.dp)
-    ) {
-        Column {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Overall Balance",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Medium,
-                        color = TextSecondary
-                    )
-                )
-                Text(
-                    text = dateRangeText,
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextSecondary,
-                        fontSize = 11.sp
-                    )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Large Overall Balance Value
-            Text(
-                text = CurrencyFormatter.format(overallBalance),
-                style = MaterialTheme.typography.displayMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
-                    letterSpacing = (-0.5).sp
-                )
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color(0x22FFFFFF), thickness = 1.dp)
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Income & Expense Sub-Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Income Column
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(IncomeGreen)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Income",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = TextPrimary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "+ ${CurrencyFormatter.format(monthlyIncome)}",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary,
-                            fontSize = 15.sp
-                        )
-                    )
-                }
-
-                // Expense Column
-                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(ExpenseRed)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Expense",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = ExpenseRed,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "− ${CurrencyFormatter.format(monthlyExpense)}",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = ExpenseRed,
-                            fontSize = 15.sp
-                        )
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MonthlyTransferSummaryCard(
+    dateRangeText: String,
     transfersMoved: Double
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(CardBackground)
-            .border(width = 1.dp, color = CardBorderSubtle, shape = RoundedCornerShape(16.dp))
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.SwapHoriz,
-                    contentDescription = null,
-                    tint = TransferBlueGrey,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Transfers this month",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextSecondary,
-                        fontWeight = FontWeight.Medium
-                    )
-                )
-            }
+    HeroCard {
+        Column(modifier = Modifier.padding(22.dp)) {
             Text(
-                text = "${CurrencyFormatter.format(transfersMoved)} moved",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                text = "Overall Balance",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    color = VioletSoft,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.5.sp
                 )
             )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = CurrencyFormatter.format(overallBalance),
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                    letterSpacing = (-1).sp
+                )
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = dateRangeText,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = TextSecondary,
+                    fontSize = 11.5.sp
+                )
+            )
+
+            Spacer(modifier = Modifier.height(18.dp))
+            HorizontalDivider(color = Color(0x1FFFFFFF), thickness = 1.dp)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                StatBlock(
+                    label = "Income",
+                    value = "+ ${CurrencyFormatter.format(monthlyIncome)}",
+                    accent = IncomeGreen,
+                    modifier = Modifier.weight(1f)
+                )
+                StatBlock(
+                    label = "Expense",
+                    value = "− ${CurrencyFormatter.format(monthlyExpense)}",
+                    accent = ExpenseRed,
+                    modifier = Modifier.weight(1f),
+                    alignEnd = true
+                )
+            }
+
+            if (transfersMoved > 0.0) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Transfers this month",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = TextMuted,
+                            fontSize = 11.5.sp
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = CurrencyFormatter.format(transfersMoved),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = TransferBlueGrey,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.5.sp
+                        )
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun QuickActionsSection(
+private fun QuickAddChips(
     onAddExpense: () -> Unit,
     onAddIncome: () -> Unit,
     onTransfer: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(
-            text = "Quick Actions",
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-        )
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            QuickActionButton(
-                title = "Expense",
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PillChip(
+                label = "Expense",
                 icon = Icons.Default.ArrowDownward,
-                color = ExpenseRed,
+                accent = ExpenseRed,
                 onClick = onAddExpense,
                 modifier = Modifier.weight(1f)
             )
-            QuickActionButton(
-                title = "Income",
+            PillChip(
+                label = "Income",
                 icon = Icons.Default.ArrowUpward,
-                color = IncomeGreen,
+                accent = IncomeGreen,
                 onClick = onAddIncome,
                 modifier = Modifier.weight(1f)
             )
-            QuickActionButton(
-                title = "Transfer",
-                icon = Icons.Default.SwapHoriz,
-                color = TransferBlueGrey,
-                onClick = onTransfer,
-                modifier = Modifier.weight(1f)
-            )
         }
-    }
-}
-
-@Composable
-private fun QuickActionButton(
-    title: String,
-    icon: ImageVector,
-    color: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val pressScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.6f,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "quickActionPress"
-    )
-
-    Box(
-        modifier = modifier
-            .graphicsLayer {
-                scaleX = pressScale
-                scaleY = pressScale
-            }
-            .clip(RoundedCornerShape(16.dp))
-            .background(CardBackground)
-            .border(width = 1.dp, color = CardBorder, shape = RoundedCornerShape(16.dp))
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null
-            ) { onClick() }
-            .padding(horizontal = 10.dp, vertical = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(color.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    tint = color,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
-                    fontSize = 12.5.sp
-                )
-            )
-        }
+        PillChip(
+            label = "Transfer between accounts",
+            icon = Icons.Default.SwapHoriz,
+            accent = TransferBlueGrey,
+            onClick = onTransfer,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
 @Composable
 private fun EmptyActivityView(
-    onAddExpense: () -> Unit,
-    onAddIncome: () -> Unit
+    onAddExpense: () -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(CardBackground)
-            .border(width = 1.dp, color = CardBorder, shape = RoundedCornerShape(20.dp))
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
-    ) {
+    AppCard {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(26.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "No transactions in this month",
+                text = "Nothing recorded yet",
                 style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Add an expense, income, or transfer to see historical running balances.",
+                text = "Add your first transaction to start tracking this month.",
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = TextSecondary,
-                    fontSize = 12.sp
+                    fontSize = 12.5.sp
                 ),
-                modifier = Modifier.padding(horizontal = 16.dp)
+                modifier = Modifier.padding(horizontal = 8.dp)
             )
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(
-                    onClick = onAddIncome,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = IncomeCardBg,
-                        contentColor = IncomeGreen
-                    ),
-                    modifier = Modifier.border(1.dp, IncomeGreen.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-                ) {
-                    Text("+ Add Income", fontWeight = FontWeight.Bold)
-                }
-
-                Button(
-                    onClick = onAddExpense,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = ExpenseCardBg,
-                        contentColor = ExpenseRed
-                    ),
-                    modifier = Modifier.border(1.dp, ExpenseRed.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-                ) {
-                    Text("− Add Expense", fontWeight = FontWeight.Bold)
-                }
-            }
+            Spacer(modifier = Modifier.height(20.dp))
+            GradientPillButton(
+                text = "Add Transaction",
+                leadingIcon = Icons.Default.Add,
+                onClick = onAddExpense
+            )
         }
     }
 }

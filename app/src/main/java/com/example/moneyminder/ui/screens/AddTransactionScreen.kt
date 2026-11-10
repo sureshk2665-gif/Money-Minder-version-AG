@@ -83,6 +83,7 @@ import com.example.moneyminder.theme.TransferBlueGrey
 import com.example.moneyminder.theme.TransferPillBg
 import com.example.moneyminder.theme.WalletAccent
 import com.example.moneyminder.ui.components.AppDatePickerDialog
+import com.example.moneyminder.ui.components.GradientPillButton
 import com.example.moneyminder.ui.components.AppTimePickerDialog
 import com.example.moneyminder.ui.components.MoneyMinderHeader
 import com.example.moneyminder.ui.viewmodel.MainViewModel
@@ -783,25 +784,10 @@ fun AddTransactionScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.padding(top = 2.dp)
                 ) {
-                    Button(
-                        onClick = { submitTransaction(addAnother = false) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = TextPrimary,
-                            contentColor = Color.Black
-                        )
-                    ) {
-                        Text(
-                            text = "Save Transaction",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
-                        )
-                    }
+                    GradientPillButton(
+                        text = "Save Transaction",
+                        onClick = { submitTransaction(addAnother = false) }
+                    )
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(
