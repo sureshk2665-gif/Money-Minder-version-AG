@@ -12,11 +12,31 @@ android {
         applicationId = "com.example.moneyminder"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // CI passes its run number so each build outranks the last; local
+        // builds fall back to 1.
+        versionCode = (System.getenv("BUILD_NUMBER") ?: "1").toIntOrNull() ?: 1
+        versionName = "1.0.${System.getenv("BUILD_NUMBER") ?: "0"}"
+    }
+
+    // Without this, each CI runner generates its own throwaway debug keystore,
+    // so consecutive builds are signed by different keys and Android refuses to
+    // install one over another ("package conflicts with an existing package").
+    // A committed debug key keeps the signature stable so builds upgrade in
+    // place and keep their data. It is a debug key only; releases are not
+    // signed with it.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("keystore/shared-debug.jks")
+            storePassword = "android"
+            keyAlias = "moneyminderdebug"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

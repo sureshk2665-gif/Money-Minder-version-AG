@@ -26,6 +26,13 @@ render.experimental.xml
 *.jks
 *.keystore
 
+# Exception: the shared DEBUG keystore is committed on purpose. CI would
+# otherwise mint a new debug key per run, and Android refuses to install a
+# build signed by a different key over an existing one. This key signs debug
+# builds only; it is not a release key and its password is the Android
+# convention, so it is not treated as a secret.
+!app/keystore/shared-debug.jks
+
 # Google Services (e.g. APIs or Firebase)
 google-services.json
 
