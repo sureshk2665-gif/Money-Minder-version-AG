@@ -107,14 +107,14 @@ fun TransactionCard(
                 scaleX = pressScale
                 scaleY = pressScale
             }
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(Brush.horizontalGradient(cardBg))
-            .border(width = 1.dp, color = borderColor, shape = RoundedCornerShape(16.dp))
+            .border(width = 1.dp, color = borderColor, shape = RoundedCornerShape(18.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null
             ) { onClick() }
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .padding(horizontal = 15.dp, vertical = 14.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
