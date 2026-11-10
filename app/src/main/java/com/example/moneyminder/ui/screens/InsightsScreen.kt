@@ -60,7 +60,7 @@ import com.example.moneyminder.data.model.CategorySpending
 import com.example.moneyminder.data.model.DaySummary
 import com.example.moneyminder.data.model.TransactionEntity
 import com.example.moneyminder.data.model.TransactionType
-import com.example.moneyminder.theme.BackgroundDark
+import com.example.moneyminder.theme.BackdropGradient
 import com.example.moneyminder.theme.CardBackground
 import com.example.moneyminder.theme.CardBackgroundElevated
 import com.example.moneyminder.theme.CardBorder
@@ -123,7 +123,7 @@ fun InsightsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(BackgroundDark)
+            .background(BackdropGradient)
     ) {
         MoneyMinderHeader(
             title = "Insights",

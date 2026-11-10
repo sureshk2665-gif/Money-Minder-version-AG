@@ -39,7 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.moneyminder.R
-import com.example.moneyminder.theme.BackgroundDark
+import com.example.moneyminder.theme.BackdropGradient
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
 
@@ -50,7 +50,7 @@ fun WelcomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundDark)
+            .background(BackdropGradient)
             .padding(24.dp)
     ) {
         Column(

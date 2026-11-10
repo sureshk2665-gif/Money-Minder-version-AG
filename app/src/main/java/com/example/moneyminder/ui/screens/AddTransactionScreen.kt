@@ -68,7 +68,7 @@ import com.example.moneyminder.data.model.AccountType
 import com.example.moneyminder.data.model.CategoryEntity
 import com.example.moneyminder.data.model.LendReturnKind
 import com.example.moneyminder.data.model.TransactionType
-import com.example.moneyminder.theme.BackgroundDark
+import com.example.moneyminder.theme.BackdropGradient
 import com.example.moneyminder.theme.CardBackground
 import com.example.moneyminder.theme.CardBackgroundElevated
 import com.example.moneyminder.theme.CardBorder
@@ -288,7 +288,7 @@ fun AddTransactionScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(BackgroundDark)
+            .background(BackdropGradient)
     ) {
         Column(
             modifier = Modifier

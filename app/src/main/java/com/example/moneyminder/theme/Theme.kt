@@ -6,29 +6,38 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = TextPrimary,
-    onPrimary = BackgroundDark,
-    primaryContainer = CardBackgroundElevated,
+    primary = VioletPrimary,
+    onPrimary = Color(0xFF1A0B2E),
+    primaryContainer = VioletDeep,
     onPrimaryContainer = TextPrimary,
-    secondary = TransferBlueGrey,
-    onSecondary = TextPrimary,
-    secondaryContainer = CardBackground,
-    onSecondaryContainer = TextSecondary,
+    inversePrimary = VioletSoft,
+    secondary = PinkAccent,
+    onSecondary = Color(0xFF2A0B1F),
+    secondaryContainer = CardBackgroundElevated,
+    onSecondaryContainer = TextPrimary,
+    tertiary = VioletSoft,
+    onTertiary = Color(0xFF1A0B2E),
     background = BackgroundDark,
     onBackground = TextPrimary,
     surface = SurfaceDark,
     onSurface = TextPrimary,
     surfaceVariant = CardBackground,
     onSurfaceVariant = TextSecondary,
+    surfaceContainerLowest = BackgroundDark,
+    surfaceContainerLow = SurfaceDark,
+    surfaceContainer = CardBackground,
+    surfaceContainerHigh = CardBackgroundElevated,
+    surfaceContainerHighest = GlassSelectionHighlight,
     outline = CardBorder,
     outlineVariant = CardBorderSubtle,
     error = ExpenseRed,
-    onError = TextPrimary
+    onError = Color(0xFF2A0B12)
 )
 
 @Composable
