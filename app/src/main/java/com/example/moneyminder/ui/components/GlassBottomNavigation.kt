@@ -43,7 +43,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -52,8 +51,15 @@ import androidx.compose.ui.unit.sp
 import com.example.moneyminder.theme.BackgroundDark
 import com.example.moneyminder.theme.CardBorder
 import com.example.moneyminder.theme.CardBorderSubtle
+import com.example.moneyminder.theme.AccentGradient
+import com.example.moneyminder.theme.GlassBorder
+import com.example.moneyminder.theme.GlassBorderStrong
 import com.example.moneyminder.theme.GlassNavBackground
+import com.example.moneyminder.theme.GlassNavPillBottom
+import com.example.moneyminder.theme.GlassNavPillTop
 import com.example.moneyminder.theme.GlassSelectionHighlight
+import com.example.moneyminder.theme.VioletDeep
+import com.example.moneyminder.theme.VioletPrimary
 import com.example.moneyminder.theme.TextMuted
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
@@ -119,15 +125,12 @@ fun GlassBottomNavigation(
                         .clip(RoundedCornerShape(26.dp))
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(
-                                    Color(0xFF2C2C36),
-                                    Color(0xFF1E1E26)
-                                )
+                                colors = listOf(GlassNavPillTop, GlassNavPillBottom)
                             )
                         )
                         .border(
                             width = 1.dp,
-                            color = Color(0x33FFFFFF),
+                            color = GlassBorder,
                             shape = RoundedCornerShape(26.dp)
                         )
                 )
@@ -183,18 +186,14 @@ fun GlassBottomNavigation(
                                     .clip(CircleShape)
                                     .background(
                                         if (isSelected) {
-                                            Brush.linearGradient(
-                                                listOf(Color(0xFF4A4A58), Color(0xFF282834))
-                                            )
+                                            AccentGradient
                                         } else {
-                                            Brush.linearGradient(
-                                                listOf(Color(0xFF333340), Color(0xFF202028))
-                                            )
+                                            Brush.linearGradient(listOf(VioletPrimary, VioletDeep))
                                         }
                                     )
                                     .border(
                                         width = 1.5.dp,
-                                        color = if (isSelected) Color(0x80FFFFFF) else Color(0x33FFFFFF),
+                                        color = if (isSelected) GlassBorderStrong else GlassBorder,
                                         shape = CircleShape
                                     )
                                     .shadow(elevation = 8.dp, shape = CircleShape),

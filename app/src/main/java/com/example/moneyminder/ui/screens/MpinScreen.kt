@@ -53,7 +53,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.moneyminder.data.security.MpinPreferences
-import com.example.moneyminder.theme.BackgroundDark
+import com.example.moneyminder.theme.BackdropGradient
 import com.example.moneyminder.theme.CardBackground
 import com.example.moneyminder.theme.CardBackgroundElevated
 import com.example.moneyminder.theme.CardBorder
@@ -275,7 +275,7 @@ fun MpinScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundDark)
+            .background(BackdropGradient)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -483,7 +483,7 @@ private fun SecurityQuestionsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundDark)
+            .background(BackdropGradient)
             .padding(24.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally

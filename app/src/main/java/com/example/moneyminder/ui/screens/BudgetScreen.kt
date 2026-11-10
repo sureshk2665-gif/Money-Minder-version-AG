@@ -58,7 +58,7 @@ import com.example.moneyminder.data.model.CategorySpending
 import com.example.moneyminder.data.model.HeldMoneyEntry
 import com.example.moneyminder.data.model.HeldMoneyTransaction
 import com.example.moneyminder.data.model.LentReturnItem
-import com.example.moneyminder.theme.BackgroundDark
+import com.example.moneyminder.theme.BackdropGradient
 import com.example.moneyminder.theme.CardBackground
 import com.example.moneyminder.theme.CardBackgroundElevated
 import com.example.moneyminder.theme.CardBorder
@@ -104,7 +104,7 @@ fun BudgetScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(BackgroundDark)
+            .background(BackdropGradient)
     ) {
         MoneyMinderHeader(
             title = "Budget",

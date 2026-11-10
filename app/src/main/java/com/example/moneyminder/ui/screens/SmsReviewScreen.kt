@@ -71,6 +71,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import com.example.moneyminder.data.model.InboxSmsMessage
 import com.example.moneyminder.data.model.TransactionType
+import com.example.moneyminder.theme.BackdropGradient
 import com.example.moneyminder.theme.BackgroundDark
 import com.example.moneyminder.theme.BankAccent
 import com.example.moneyminder.theme.CardBackground
@@ -100,7 +101,7 @@ fun SmsReviewScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(BackgroundDark)
+            .background(BackdropGradient)
     ) {
         // Header
         Row(
