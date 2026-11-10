@@ -12,6 +12,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -191,9 +193,41 @@ private fun InboxSyncContent(
     onBlockSender: (String) -> Unit
 ) {
     val context = LocalContext.current
-    val inboxSms by viewModel.inboxSmsList.collectAsState()
+    val allInboxSms by viewModel.inboxSmsList.collectAsState()
     val isLoading by viewModel.smsLoading.collectAsState()
     val permissionGranted by viewModel.smsPermissionGranted.collectAsState()
+
+    // Transaction messages are the point of this screen, so they are what shows
+    // by default; the rest stay one tap away.
+    var showOnlyTransactional by remember { mutableStateOf(true) }
+    var monthFilter by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+
+    val monthsAvailable = remember(allInboxSms) {
+        allInboxSms
+            .map { msg ->
+                val cal = Calendar.getInstance().apply { timeInMillis = msg.dateMillis }
+                cal.get(Calendar.YEAR) to (cal.get(Calendar.MONTH) + 1)
+            }
+            .distinct()
+            .sortedWith(compareByDescending<Pair<Int, Int>> { it.first }.thenByDescending { it.second })
+    }
+
+    // A month that scrolled out of the 90-day window would otherwise leave the
+    // list silently empty.
+    LaunchedEffect(monthsAvailable) {
+        if (monthFilter != null && monthFilter !in monthsAvailable) monthFilter = null
+    }
+
+    val inboxSms = remember(allInboxSms, showOnlyTransactional, monthFilter) {
+        allInboxSms.filter { msg ->
+            val matchesType = !showOnlyTransactional || msg.isFinancial
+            val matchesMonth = monthFilter?.let { (year, month) ->
+                val cal = Calendar.getInstance().apply { timeInMillis = msg.dateMillis }
+                cal.get(Calendar.YEAR) == year && cal.get(Calendar.MONTH) + 1 == month
+            } ?: true
+            matchesType && matchesMonth
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -289,7 +323,7 @@ private fun InboxSyncContent(
                 style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
             )
         }
-    } else if (inboxSms.isEmpty()) {
+    } else if (allInboxSms.isEmpty()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -321,7 +355,7 @@ private fun InboxSyncContent(
             }
         }
     } else {
-        val financialCount = inboxSms.count { it.isFinancial }
+        val financialCount = allInboxSms.count { it.isFinancial }
 
         // Top bar with counts and refresh
         Row(
@@ -333,13 +367,13 @@ private fun InboxSyncContent(
         ) {
             Column {
                 Text(
-                    "${inboxSms.size} messages synced",
+                    "${inboxSms.size} shown",
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = TextSecondary, fontWeight = FontWeight.SemiBold
                     )
                 )
                 Text(
-                    "$financialCount transaction SMS detected",
+                    "$financialCount transaction SMS of ${allInboxSms.size} synced",
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = BankAccent, fontSize = 11.sp
                     )
@@ -355,6 +389,87 @@ private fun InboxSyncContent(
                 Spacer(Modifier.width(4.dp))
                 Text("Refresh", fontSize = 12.sp)
             }
+        }
+
+        // Transactions-only toggle
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            listOf(true to "Transactions", false to "All messages").forEach { (onlyTx, label) ->
+                val active = showOnlyTransactional == onlyTx
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(if (active) BankAccent.copy(alpha = 0.18f) else CardBackgroundElevated)
+                        .border(
+                            1.dp,
+                            if (active) BankAccent else CardBorderSubtle,
+                            RoundedCornerShape(16.dp)
+                        )
+                        .clickable { showOnlyTransactional = onlyTx }
+                        .padding(horizontal = 14.dp, vertical = 7.dp)
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = if (active) BankAccent else TextSecondary,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.5.sp
+                        )
+                    )
+                }
+            }
+        }
+
+        // Month filter
+        if (monthsAvailable.size > 1) {
+            Spacer(Modifier.height(8.dp))
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item(key = "month_all") {
+                    MonthFilterChip(
+                        label = "All months",
+                        selected = monthFilter == null,
+                        onClick = { monthFilter = null }
+                    )
+                }
+                items(monthsAvailable, key = { "${it.first}_${it.second}" }) { ym ->
+                    MonthFilterChip(
+                        label = DateTimeUtils.formatMonthYear(ym.first, ym.second),
+                        selected = monthFilter == ym,
+                        onClick = { monthFilter = if (monthFilter == ym) null else ym }
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        if (inboxSms.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (showOnlyTransactional) {
+                        "No transaction SMS in this range. Tap \"All messages\" to see everything."
+                    } else {
+                        "No messages in this range."
+                    },
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary),
+                    textAlign = TextAlign.Center
+                )
+            }
+            return
         }
 
         // SMS list — grouped by date like native inbox
@@ -730,5 +845,34 @@ private fun getDateLabel(millis: Long): String {
         msgCal.get(Calendar.YEAR) == yesterdayCal.get(Calendar.YEAR) &&
                 msgCal.get(Calendar.DAY_OF_YEAR) == yesterdayCal.get(Calendar.DAY_OF_YEAR) -> "Yesterday"
         else -> SimpleDateFormat("EEEE, dd MMM yyyy", Locale.getDefault()).format(Date(millis))
+    }
+}
+
+@Composable
+private fun MonthFilterChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (selected) BankAccent.copy(alpha = 0.18f) else CardBackgroundElevated)
+            .border(
+                1.dp,
+                if (selected) BankAccent else CardBorderSubtle,
+                RoundedCornerShape(16.dp)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 13.dp, vertical = 7.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium.copy(
+                color = if (selected) BankAccent else TextSecondary,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp
+            )
+        )
     }
 }
