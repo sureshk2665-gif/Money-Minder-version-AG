@@ -42,8 +42,8 @@ import com.example.moneyminder.theme.CardBorderSubtle
 import com.example.moneyminder.theme.TextMuted
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
-import com.example.moneyminder.theme.VioletPrimary
-import com.example.moneyminder.theme.VioletSoft
+import com.example.moneyminder.theme.AccentPrimary
+import com.example.moneyminder.theme.AccentSoft
 
 /** Shared shapes so the rounding stays consistent across screens. */
 object AppShapes {
@@ -80,7 +80,7 @@ fun SectionHeader(
             Text(
                 text = actionLabel,
                 style = MaterialTheme.typography.labelMedium.copy(
-                    color = if (onActionClick != null) VioletSoft else TextMuted,
+                    color = if (onActionClick != null) AccentSoft else TextMuted,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 12.5.sp
                 ),
@@ -230,16 +230,18 @@ fun HeroCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(AppShapes.Card)
+            // Stays a black slab; the blue only grazes the top edge, so the card
+            // reads as lit rather than tinted.
             .background(
-                Brush.linearGradient(
+                Brush.verticalGradient(
                     listOf(
-                        VioletPrimary.copy(alpha = 0.30f),
-                        VioletPrimary.copy(alpha = 0.08f),
+                        AccentPrimary.copy(alpha = 0.16f),
+                        CardBackground,
                         CardBackground
                     )
                 )
             )
-            .border(1.dp, VioletPrimary.copy(alpha = 0.28f), AppShapes.Card)
+            .border(1.dp, AccentPrimary.copy(alpha = 0.32f), AppShapes.Card)
     ) {
         content()
     }
