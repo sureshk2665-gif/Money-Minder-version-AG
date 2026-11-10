@@ -296,6 +296,194 @@ class TransactionDao(context: Context) {
         try {
             db.delete(MoneyMinderDatabaseHelper.TABLE_TRANSACTIONS, null, null)
             db.delete(MoneyMinderDatabaseHelper.TABLE_CATEGORIES, null, null)
+            db.delete(MoneyMinderDatabaseHelper.TABLE_BUDGET_ITEMS, null, null)
+            db.delete(MoneyMinderDatabaseHelper.TABLE_LENT_RETURN, null, null)
+            db.delete(MoneyMinderDatabaseHelper.TABLE_SALARY, null, null)
+            db.delete(MoneyMinderDatabaseHelper.TABLE_HELD_MONEY_TX, null, null)
+            db.delete(MoneyMinderDatabaseHelper.TABLE_HELD_MONEY, null, null)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        notifyDataChanged()
+    }
+
+    /**
+     * Every salary row, for backup. The per-month getter only reads one.
+     */
+    @Synchronized
+    fun getAllSalaries(): List<Triple<Int, Int, Double>> {
+        val list = mutableListOf<Triple<Int, Int, Double>>()
+        val db = dbHelper.readableDatabase
+        db.query(
+            MoneyMinderDatabaseHelper.TABLE_SALARY,
+            arrayOf(
+                MoneyMinderDatabaseHelper.COL_SAL_YEAR,
+                MoneyMinderDatabaseHelper.COL_SAL_MONTH,
+                MoneyMinderDatabaseHelper.COL_SAL_AMOUNT
+            ),
+            null, null, null, null, null
+        ).use { c ->
+            while (c.moveToNext()) {
+                list.add(Triple(c.getInt(0), c.getInt(1), c.getDouble(2)))
+            }
+        }
+        return list
+    }
+
+    /** Every budget item across all months, for backup. */
+    @Synchronized
+    fun getAllBudgetItems(): List<BudgetItem> {
+        val list = mutableListOf<BudgetItem>()
+        val db = dbHelper.readableDatabase
+        db.query(MoneyMinderDatabaseHelper.TABLE_BUDGET_ITEMS, null, null, null, null, null, null)
+            .use { c ->
+                while (c.moveToNext()) {
+                    list.add(
+                        BudgetItem(
+                            id = c.getLong(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_BUDGET_ID)),
+                            purpose = c.getString(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_BUDGET_PURPOSE)),
+                            amount = c.getDouble(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_BUDGET_AMOUNT)),
+                            isDone = c.getInt(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_BUDGET_IS_DONE)) == 1,
+                            year = c.getInt(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_BUDGET_YEAR)),
+                            month = c.getInt(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_BUDGET_MONTH)),
+                            createdAt = c.getLong(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_BUDGET_CREATED))
+                        )
+                    )
+                }
+            }
+        return list
+    }
+
+    /**
+     * Names to offer when repaying or being repaid. Repaying draws on who you
+     * borrowed from; being repaid draws on who you lent to. Names already
+     * settled by a matching return are left out, so the list shrinks as debts
+     * are cleared rather than growing forever.
+     */
+    @Synchronized
+    fun getOutstandingCounterparties(sourceType: String): List<String> {
+        val db = dbHelper.readableDatabase
+        val open = linkedMapOf<String, Double>()
+
+        db.query(
+            MoneyMinderDatabaseHelper.TABLE_LENT_RETURN,
+            arrayOf(
+                MoneyMinderDatabaseHelper.COL_LR_NAME,
+                MoneyMinderDatabaseHelper.COL_LR_AMOUNT,
+                MoneyMinderDatabaseHelper.COL_LR_TYPE
+            ),
+            null, null, null, null,
+            "${MoneyMinderDatabaseHelper.COL_LR_CREATED} ASC"
+        ).use { c ->
+            while (c.moveToNext()) {
+                val name = c.getString(0)?.trim().orEmpty()
+                if (name.isBlank()) continue
+                val amount = c.getDouble(1)
+                when (c.getString(2)) {
+                    sourceType -> open[name] = (open[name] ?: 0.0) + amount
+                    "RETURN" -> open[name] = (open[name] ?: 0.0) - amount
+                }
+            }
+        }
+
+        // A tiny epsilon keeps floating-point dust from leaving a settled name
+        // on the list.
+        return open.filterValues { it > 0.01 }.keys.toList()
+    }
+
+    /** Every lent/return item across all months, for backup. */
+    @Synchronized
+    fun getAllLentReturnItems(): List<LentReturnItem> {
+        val list = mutableListOf<LentReturnItem>()
+        val db = dbHelper.readableDatabase
+        db.query(MoneyMinderDatabaseHelper.TABLE_LENT_RETURN, null, null, null, null, null, null)
+            .use { c ->
+                while (c.moveToNext()) {
+                    list.add(
+                        LentReturnItem(
+                            id = c.getLong(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_ID)),
+                            personName = c.getString(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_NAME)),
+                            amount = c.getDouble(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_AMOUNT)),
+                            type = c.getString(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_TYPE)),
+                            isReturned = c.getInt(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_IS_RETURNED)) == 1,
+                            year = c.getInt(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_YEAR)),
+                            month = c.getInt(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_MONTH)),
+                            createdAt = c.getLong(c.getColumnIndexOrThrow(MoneyMinderDatabaseHelper.COL_LR_CREATED))
+                        )
+                    )
+                }
+            }
+        return list
+    }
+
+    /**
+     * Restore the non-transaction tables, preserving the original row ids so
+     * held-money transactions still point at their parent entry.
+     */
+    @Synchronized
+    fun restoreAuxiliaryData(
+        budgetItems: List<BudgetItem>,
+        lentReturns: List<LentReturnItem>,
+        salaries: List<Triple<Int, Int, Double>>,
+        heldMoney: List<HeldMoneyEntry>,
+        heldMoneyTransactions: List<HeldMoneyTransaction>
+    ) {
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        try {
+            for (b in budgetItems) {
+                db.insert(MoneyMinderDatabaseHelper.TABLE_BUDGET_ITEMS, null, ContentValues().apply {
+                    if (b.id > 0) put(MoneyMinderDatabaseHelper.COL_BUDGET_ID, b.id)
+                    put(MoneyMinderDatabaseHelper.COL_BUDGET_PURPOSE, b.purpose)
+                    put(MoneyMinderDatabaseHelper.COL_BUDGET_AMOUNT, b.amount)
+                    put(MoneyMinderDatabaseHelper.COL_BUDGET_IS_DONE, if (b.isDone) 1 else 0)
+                    put(MoneyMinderDatabaseHelper.COL_BUDGET_YEAR, b.year)
+                    put(MoneyMinderDatabaseHelper.COL_BUDGET_MONTH, b.month)
+                    put(MoneyMinderDatabaseHelper.COL_BUDGET_CREATED, b.createdAt)
+                })
+            }
+            for (l in lentReturns) {
+                db.insert(MoneyMinderDatabaseHelper.TABLE_LENT_RETURN, null, ContentValues().apply {
+                    if (l.id > 0) put(MoneyMinderDatabaseHelper.COL_LR_ID, l.id)
+                    put(MoneyMinderDatabaseHelper.COL_LR_NAME, l.personName)
+                    put(MoneyMinderDatabaseHelper.COL_LR_AMOUNT, l.amount)
+                    put(MoneyMinderDatabaseHelper.COL_LR_TYPE, l.type)
+                    put(MoneyMinderDatabaseHelper.COL_LR_IS_RETURNED, if (l.isReturned) 1 else 0)
+                    put(MoneyMinderDatabaseHelper.COL_LR_YEAR, l.year)
+                    put(MoneyMinderDatabaseHelper.COL_LR_MONTH, l.month)
+                    put(MoneyMinderDatabaseHelper.COL_LR_CREATED, l.createdAt)
+                })
+            }
+            for ((year, month, amount) in salaries) {
+                db.insertWithOnConflict(
+                    MoneyMinderDatabaseHelper.TABLE_SALARY, null,
+                    ContentValues().apply {
+                        put(MoneyMinderDatabaseHelper.COL_SAL_YEAR, year)
+                        put(MoneyMinderDatabaseHelper.COL_SAL_MONTH, month)
+                        put(MoneyMinderDatabaseHelper.COL_SAL_AMOUNT, amount)
+                    },
+                    android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE
+                )
+            }
+            for (h in heldMoney) {
+                db.insert(MoneyMinderDatabaseHelper.TABLE_HELD_MONEY, null, ContentValues().apply {
+                    if (h.id > 0) put(MoneyMinderDatabaseHelper.COL_HM_ID, h.id)
+                    put(MoneyMinderDatabaseHelper.COL_HM_FRIEND_NAME, h.friendName)
+                    put(MoneyMinderDatabaseHelper.COL_HM_TOTAL_AMOUNT, h.totalAmount)
+                    put(MoneyMinderDatabaseHelper.COL_HM_CREATED, h.createdAt)
+                })
+            }
+            for (t in heldMoneyTransactions) {
+                db.insert(MoneyMinderDatabaseHelper.TABLE_HELD_MONEY_TX, null, ContentValues().apply {
+                    if (t.id > 0) put(MoneyMinderDatabaseHelper.COL_HMT_ID, t.id)
+                    put(MoneyMinderDatabaseHelper.COL_HMT_HELD_ID, t.heldMoneyId)
+                    put(MoneyMinderDatabaseHelper.COL_HMT_TYPE, t.type)
+                    put(MoneyMinderDatabaseHelper.COL_HMT_AMOUNT, t.amount)
+                    put(MoneyMinderDatabaseHelper.COL_HMT_NOTE, t.note)
+                    put(MoneyMinderDatabaseHelper.COL_HMT_CREATED, t.createdAt)
+                })
+            }
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()

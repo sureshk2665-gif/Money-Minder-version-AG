@@ -323,6 +323,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return dao.getCategories(type)
     }
 
+    /**
+     * Who still owes, or is still owed, for the given lend/return direction.
+     * Repaying suggests people you borrowed from; being repaid suggests people
+     * you lent to.
+     */
+    fun getCounterpartySuggestions(kind: LendReturnKind): List<String> {
+        val sourceType = when (kind) {
+            LendReturnKind.RETURN_PAID -> LendReturnKind.BORROWED.budgetType
+            LendReturnKind.RETURN_RECEIVED -> LendReturnKind.LENT.budgetType
+            else -> return emptyList()
+        }
+        return dao.getOutstandingCounterparties(sourceType)
+    }
+
     fun addCategory(name: String, type: TransactionType, onDone: (Boolean) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             val added = dao.addCategory(name, type)

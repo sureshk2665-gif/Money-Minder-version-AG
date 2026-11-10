@@ -15,6 +15,11 @@ import com.example.moneyminder.data.db.TransactionDao
 import com.example.moneyminder.data.model.BackupOperationStatus
 import com.example.moneyminder.data.model.BackupSettingsRecord
 import com.example.moneyminder.data.model.BackupStatus
+import com.example.moneyminder.data.model.BackupSalaryRecord
+import com.example.moneyminder.data.model.BudgetItem
+import com.example.moneyminder.data.model.HeldMoneyEntry
+import com.example.moneyminder.data.model.HeldMoneyTransaction
+import com.example.moneyminder.data.model.LentReturnItem
 import com.example.moneyminder.data.model.MoneyMinderBackupFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -87,7 +92,15 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                     bankBalance = balances.bankBalance,
                     walletBalance = balances.walletBalance,
                     cashBalance = balances.cashBalance,
-                    backupId = backupId
+                    backupId = backupId,
+                    budgetItems = dao.getAllBudgetItems(),
+                    lentReturns = dao.getAllLentReturnItems(),
+                    salaries = dao.getAllSalaries().map { (y, m, amt) ->
+                        BackupSalaryRecord(year = y, month = m, amount = amt)
+                    },
+                    heldMoney = dao.getHeldMoneyEntries(),
+                    heldMoneyTransactions = dao.getHeldMoneyEntries()
+                        .flatMap { dao.getHeldMoneyTransactions(it.id) }
                 )
 
                 val backupJson = BackupSerializer.toJson(backupFile)
@@ -202,7 +215,15 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                     bankBalance = balances.bankBalance,
                     walletBalance = balances.walletBalance,
                     cashBalance = balances.cashBalance,
-                    backupId = backupId
+                    backupId = backupId,
+                    budgetItems = dao.getAllBudgetItems(),
+                    lentReturns = dao.getAllLentReturnItems(),
+                    salaries = dao.getAllSalaries().map { (y, m, amt) ->
+                        BackupSalaryRecord(year = y, month = m, amount = amt)
+                    },
+                    heldMoney = dao.getHeldMoneyEntries(),
+                    heldMoneyTransactions = dao.getHeldMoneyEntries()
+                        .flatMap { dao.getHeldMoneyTransactions(it.id) }
                 )
 
                 val backupJson = BackupSerializer.toJson(backupFile)
@@ -251,6 +272,53 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
             val categories = file.categories.map { BackupSerializer.toCategoryEntity(it) }
             dao.insertAllForRestore(entities)
             dao.insertCategoriesForRestore(categories)
+
+            // Version 1 backups carry none of these, so the lists come back
+            // empty and the restore is a no-op for them.
+            dao.restoreAuxiliaryData(
+                budgetItems = file.budgetItems.map { b ->
+                    BudgetItem(
+                        id = b.id,
+                        purpose = b.purpose,
+                        amount = b.amount,
+                        isDone = b.isDone,
+                        year = b.year,
+                        month = b.month,
+                        createdAt = b.createdAt
+                    )
+                },
+                lentReturns = file.lentReturns.map { l ->
+                    LentReturnItem(
+                        id = l.id,
+                        personName = l.personName,
+                        amount = l.amount,
+                        type = l.type,
+                        isReturned = l.isReturned,
+                        year = l.year,
+                        month = l.month,
+                        createdAt = l.createdAt
+                    )
+                },
+                salaries = file.salaries.map { Triple(it.year, it.month, it.amount) },
+                heldMoney = file.heldMoney.map { h ->
+                    HeldMoneyEntry(
+                        id = h.id,
+                        friendName = h.friendName,
+                        totalAmount = h.totalAmount,
+                        createdAt = h.createdAt
+                    )
+                },
+                heldMoneyTransactions = file.heldMoneyTransactions.map { t ->
+                    HeldMoneyTransaction(
+                        id = t.id,
+                        heldMoneyId = t.heldMoneyId,
+                        type = t.type,
+                        amount = t.amount,
+                        note = t.note,
+                        createdAt = t.createdAt
+                    )
+                }
+            )
             true
         } catch (e: Exception) { false }
     }

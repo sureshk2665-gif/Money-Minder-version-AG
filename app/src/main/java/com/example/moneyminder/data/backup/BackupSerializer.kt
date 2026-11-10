@@ -1,6 +1,16 @@
 package com.example.moneyminder.data.backup
 
 import com.example.moneyminder.data.model.AccountType
+import com.example.moneyminder.data.model.BACKUP_FORMAT_VERSION
+import com.example.moneyminder.data.model.BackupBudgetItemRecord
+import com.example.moneyminder.data.model.BackupHeldMoneyRecord
+import com.example.moneyminder.data.model.BackupHeldMoneyTxRecord
+import com.example.moneyminder.data.model.BackupLentReturnRecord
+import com.example.moneyminder.data.model.BackupSalaryRecord
+import com.example.moneyminder.data.model.BudgetItem
+import com.example.moneyminder.data.model.HeldMoneyEntry
+import com.example.moneyminder.data.model.HeldMoneyTransaction
+import com.example.moneyminder.data.model.LentReturnItem
 import com.example.moneyminder.data.model.BackupCategoryRecord
 import com.example.moneyminder.data.model.BackupSettingsRecord
 import com.example.moneyminder.data.model.BackupTransactionRecord
@@ -31,10 +41,15 @@ object BackupSerializer {
         bankBalance: Double,
         walletBalance: Double,
         cashBalance: Double,
-        backupId: String
+        backupId: String,
+        budgetItems: List<BudgetItem> = emptyList(),
+        lentReturns: List<LentReturnItem> = emptyList(),
+        salaries: List<BackupSalaryRecord> = emptyList(),
+        heldMoney: List<HeldMoneyEntry> = emptyList(),
+        heldMoneyTransactions: List<HeldMoneyTransaction> = emptyList()
     ): MoneyMinderBackupFile {
         return MoneyMinderBackupFile(
-            version = 1,
+            version = BACKUP_FORMAT_VERSION,
             backupId = backupId,
             createdAt = System.currentTimeMillis(),
             deviceInfo = runCatching { android.os.Build.MODEL }.getOrNull() ?: "Android Device",
@@ -66,7 +81,49 @@ object BackupSerializer {
                     createdAt = c.lastUsedTimestamp
                 )
             },
-            settings = settings
+            settings = settings,
+            budgetItems = budgetItems.map { b ->
+                BackupBudgetItemRecord(
+                    id = b.id,
+                    purpose = b.purpose,
+                    amount = b.amount,
+                    isDone = b.isDone,
+                    year = b.year,
+                    month = b.month,
+                    createdAt = b.createdAt
+                )
+            },
+            lentReturns = lentReturns.map { l ->
+                BackupLentReturnRecord(
+                    id = l.id,
+                    personName = l.personName,
+                    amount = l.amount,
+                    type = l.type,
+                    isReturned = l.isReturned,
+                    year = l.year,
+                    month = l.month,
+                    createdAt = l.createdAt
+                )
+            },
+            salaries = salaries,
+            heldMoney = heldMoney.map { h ->
+                BackupHeldMoneyRecord(
+                    id = h.id,
+                    friendName = h.friendName,
+                    totalAmount = h.totalAmount,
+                    createdAt = h.createdAt
+                )
+            },
+            heldMoneyTransactions = heldMoneyTransactions.map { t ->
+                BackupHeldMoneyTxRecord(
+                    id = t.id,
+                    heldMoneyId = t.heldMoneyId,
+                    type = t.type,
+                    amount = t.amount,
+                    note = t.note,
+                    createdAt = t.createdAt
+                )
+            }
         )
     }
 
@@ -112,6 +169,69 @@ object BackupSerializer {
             catArray.put(obj)
         }
         root.put("categories", catArray)
+
+        val budgetArray = JSONArray()
+        for (b in file.budgetItems) {
+            val obj = JSONObject()
+            obj.put("id", b.id)
+            obj.put("purpose", b.purpose)
+            obj.put("amount", b.amount)
+            obj.put("isDone", b.isDone)
+            obj.put("year", b.year)
+            obj.put("month", b.month)
+            obj.put("createdAt", b.createdAt)
+            budgetArray.put(obj)
+        }
+        root.put("budgetItems", budgetArray)
+
+        val lentArray = JSONArray()
+        for (l in file.lentReturns) {
+            val obj = JSONObject()
+            obj.put("id", l.id)
+            obj.put("personName", l.personName)
+            obj.put("amount", l.amount)
+            obj.put("type", l.type)
+            obj.put("isReturned", l.isReturned)
+            obj.put("year", l.year)
+            obj.put("month", l.month)
+            obj.put("createdAt", l.createdAt)
+            lentArray.put(obj)
+        }
+        root.put("lentReturns", lentArray)
+
+        val salaryArray = JSONArray()
+        for (s in file.salaries) {
+            val obj = JSONObject()
+            obj.put("year", s.year)
+            obj.put("month", s.month)
+            obj.put("amount", s.amount)
+            salaryArray.put(obj)
+        }
+        root.put("salaries", salaryArray)
+
+        val heldArray = JSONArray()
+        for (h in file.heldMoney) {
+            val obj = JSONObject()
+            obj.put("id", h.id)
+            obj.put("friendName", h.friendName)
+            obj.put("totalAmount", h.totalAmount)
+            obj.put("createdAt", h.createdAt)
+            heldArray.put(obj)
+        }
+        root.put("heldMoney", heldArray)
+
+        val heldTxArray = JSONArray()
+        for (t in file.heldMoneyTransactions) {
+            val obj = JSONObject()
+            obj.put("id", t.id)
+            obj.put("heldMoneyId", t.heldMoneyId)
+            obj.put("type", t.type)
+            obj.put("amount", t.amount)
+            obj.put("note", t.note)
+            obj.put("createdAt", t.createdAt)
+            heldTxArray.put(obj)
+        }
+        root.put("heldMoneyTransactions", heldTxArray)
 
         val settingsObj = JSONObject()
         settingsObj.put("currency", file.settings.currency)
@@ -187,6 +307,91 @@ object BackupSerializer {
                 )
             }
 
+            // Version 1 files carry none of these arrays; optJSONArray returns
+            // null and each list simply stays empty.
+            val budgetItems = mutableListOf<BackupBudgetItemRecord>()
+            root.optJSONArray("budgetItems")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    budgetItems.add(
+                        BackupBudgetItemRecord(
+                            id = o.optLong("id", 0L),
+                            purpose = o.optString("purpose", ""),
+                            amount = o.optDouble("amount", 0.0),
+                            isDone = o.optBoolean("isDone", false),
+                            year = o.optInt("year", 0),
+                            month = o.optInt("month", 0),
+                            createdAt = o.optLong("createdAt", 0L)
+                        )
+                    )
+                }
+            }
+
+            val lentReturns = mutableListOf<BackupLentReturnRecord>()
+            root.optJSONArray("lentReturns")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    lentReturns.add(
+                        BackupLentReturnRecord(
+                            id = o.optLong("id", 0L),
+                            personName = o.optString("personName", ""),
+                            amount = o.optDouble("amount", 0.0),
+                            type = o.optString("type", "LENT"),
+                            isReturned = o.optBoolean("isReturned", false),
+                            year = o.optInt("year", 0),
+                            month = o.optInt("month", 0),
+                            createdAt = o.optLong("createdAt", 0L)
+                        )
+                    )
+                }
+            }
+
+            val salaries = mutableListOf<BackupSalaryRecord>()
+            root.optJSONArray("salaries")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    salaries.add(
+                        BackupSalaryRecord(
+                            year = o.optInt("year", 0),
+                            month = o.optInt("month", 0),
+                            amount = o.optDouble("amount", 0.0)
+                        )
+                    )
+                }
+            }
+
+            val heldMoney = mutableListOf<BackupHeldMoneyRecord>()
+            root.optJSONArray("heldMoney")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    heldMoney.add(
+                        BackupHeldMoneyRecord(
+                            id = o.optLong("id", 0L),
+                            friendName = o.optString("friendName", ""),
+                            totalAmount = o.optDouble("totalAmount", 0.0),
+                            createdAt = o.optLong("createdAt", 0L)
+                        )
+                    )
+                }
+            }
+
+            val heldMoneyTx = mutableListOf<BackupHeldMoneyTxRecord>()
+            root.optJSONArray("heldMoneyTransactions")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    heldMoneyTx.add(
+                        BackupHeldMoneyTxRecord(
+                            id = o.optLong("id", 0L),
+                            heldMoneyId = o.optLong("heldMoneyId", 0L),
+                            type = o.optString("type", "SPENT"),
+                            amount = o.optDouble("amount", 0.0),
+                            note = o.optString("note", ""),
+                            createdAt = o.optLong("createdAt", 0L)
+                        )
+                    )
+                }
+            }
+
             val settingsObj = root.optJSONObject("settings") ?: JSONObject()
             val settings = BackupSettingsRecord(
                 currency = settingsObj.optString("currency", "INR"),
@@ -210,7 +415,12 @@ object BackupSerializer {
                     cashBalanceSnapshot = root.optDouble("cashBalanceSnapshot", 0.0),
                     transactions = transactions,
                     categories = categories,
-                    settings = settings
+                    settings = settings,
+                    budgetItems = budgetItems,
+                    lentReturns = lentReturns,
+                    salaries = salaries,
+                    heldMoney = heldMoney,
+                    heldMoneyTransactions = heldMoneyTx
                 ),
                 null
             )
