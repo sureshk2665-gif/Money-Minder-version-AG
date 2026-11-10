@@ -32,7 +32,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.example.moneyminder.theme.AccentDeep
 import com.example.moneyminder.theme.CardBackground
+import com.example.moneyminder.theme.CardBackgroundElevated
 import com.example.moneyminder.theme.CardBorder
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
@@ -117,15 +120,22 @@ fun AppTimePickerDialog(
         is24Hour = false
     )
 
-    Dialog(onDismissRequest = onDismiss) {
+    // The platform's default dialog width is narrower than the Material time
+    // picker needs, which squeezes the AM/PM selector until its text wraps.
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Surface(
             shape = RoundedCornerShape(24.dp),
             color = CardBackground,
             border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .padding(vertical = 12.dp)
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -141,7 +151,7 @@ fun AppTimePickerDialog(
                 TimePicker(
                     state = timePickerState,
                     colors = TimePickerDefaults.colors(
-                        clockDialColor = Color(0xFF22222A),
+                        clockDialColor = CardBackgroundElevated,
                         clockDialSelectedContentColor = Color.Black,
                         clockDialUnselectedContentColor = TextPrimary,
                         selectorColor = TextPrimary,
@@ -150,8 +160,8 @@ fun AppTimePickerDialog(
                         periodSelectorUnselectedContainerColor = CardBackground,
                         periodSelectorSelectedContentColor = Color.Black,
                         periodSelectorUnselectedContentColor = TextSecondary,
-                        timeSelectorSelectedContainerColor = Color(0xFF333340),
-                        timeSelectorUnselectedContainerColor = Color(0xFF1E1E26),
+                        timeSelectorSelectedContainerColor = AccentDeep,
+                        timeSelectorUnselectedContainerColor = CardBackgroundElevated,
                         timeSelectorSelectedContentColor = TextPrimary,
                         timeSelectorUnselectedContentColor = TextSecondary
                     )

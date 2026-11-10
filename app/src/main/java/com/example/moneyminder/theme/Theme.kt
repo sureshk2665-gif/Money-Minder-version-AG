@@ -12,17 +12,17 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = VioletPrimary,
-    onPrimary = Color(0xFF1A0B2E),
-    primaryContainer = VioletDeep,
+    primary = AccentPrimary,
+    onPrimary = Color(0xFF04101F),
+    primaryContainer = AccentDeep,
     onPrimaryContainer = TextPrimary,
-    inversePrimary = VioletSoft,
-    secondary = PinkAccent,
-    onSecondary = Color(0xFF2A0B1F),
+    inversePrimary = AccentSoft,
+    secondary = AccentHighlight,
+    onSecondary = Color(0xFF032027),
     secondaryContainer = CardBackgroundElevated,
     onSecondaryContainer = TextPrimary,
-    tertiary = VioletSoft,
-    onTertiary = Color(0xFF1A0B2E),
+    tertiary = AccentSoft,
+    onTertiary = Color(0xFF04101F),
     background = BackgroundDark,
     onBackground = TextPrimary,
     surface = SurfaceDark,
@@ -37,7 +37,7 @@ private val DarkColorScheme = darkColorScheme(
     outline = CardBorder,
     outlineVariant = CardBorderSubtle,
     error = ExpenseRed,
-    onError = Color(0xFF2A0B12)
+    onError = Color(0xFF2A0C10)
 )
 
 @Composable

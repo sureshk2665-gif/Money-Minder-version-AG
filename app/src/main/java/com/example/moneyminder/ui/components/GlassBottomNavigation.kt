@@ -58,8 +58,8 @@ import com.example.moneyminder.theme.GlassNavBackground
 import com.example.moneyminder.theme.GlassNavPillBottom
 import com.example.moneyminder.theme.GlassNavPillTop
 import com.example.moneyminder.theme.GlassSelectionHighlight
-import com.example.moneyminder.theme.VioletDeep
-import com.example.moneyminder.theme.VioletPrimary
+import com.example.moneyminder.theme.AccentDeep
+import com.example.moneyminder.theme.AccentPrimary
 import com.example.moneyminder.theme.TextMuted
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
@@ -188,7 +188,7 @@ fun GlassBottomNavigation(
                                         if (isSelected) {
                                             AccentGradient
                                         } else {
-                                            Brush.linearGradient(listOf(VioletPrimary, VioletDeep))
+                                            Brush.linearGradient(listOf(AccentPrimary, AccentDeep))
                                         }
                                     )
                                     .border(

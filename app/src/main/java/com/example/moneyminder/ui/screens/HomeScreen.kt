@@ -41,7 +41,7 @@ import com.example.moneyminder.theme.TextMuted
 import com.example.moneyminder.theme.TextPrimary
 import com.example.moneyminder.theme.TextSecondary
 import com.example.moneyminder.theme.TransferBlueGrey
-import com.example.moneyminder.theme.VioletSoft
+import com.example.moneyminder.theme.AccentSoft
 import com.example.moneyminder.ui.components.AccountCardsRow
 import com.example.moneyminder.ui.components.AppCard
 import com.example.moneyminder.ui.components.GradientPillButton
@@ -157,7 +157,7 @@ private fun BalanceHero(
             Text(
                 text = "Overall Balance",
                 style = MaterialTheme.typography.labelMedium.copy(
-                    color = VioletSoft,
+                    color = AccentSoft,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 12.5.sp
                 )
