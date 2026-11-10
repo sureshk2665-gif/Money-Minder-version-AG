@@ -122,6 +122,7 @@ fun AddTransactionScreen(
 
     var savedCategories by remember { mutableStateOf<List<CategoryEntity>>(emptyList()) }
     var categoryRefreshKey by remember { mutableStateOf(0) }
+    var counterpartySuggestions by remember { mutableStateOf<List<String>>(emptyList()) }
 
     val isLendMode = selectedTab == EntryTab.LEND_RETURN
     val selectedType = when (selectedTab) {
@@ -178,6 +179,14 @@ fun AddTransactionScreen(
     LaunchedEffect(selectedType, categoryRefreshKey) {
         if (selectedType != TransactionType.TRANSFER) {
             savedCategories = viewModel.getSavedCategories(selectedType)
+        }
+    }
+
+    LaunchedEffect(isLendMode, lendKind) {
+        counterpartySuggestions = if (isLendMode) {
+            viewModel.getCounterpartySuggestions(lendKind)
+        } else {
+            emptyList()
         }
     }
 
@@ -466,6 +475,59 @@ fun AddTransactionScreen(
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier.fillMaxWidth()
                             )
+
+                            // Repaying or being repaid: offer the people who
+                            // still have an open balance in that direction.
+                            if (counterpartySuggestions.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = if (lendKind == LendReturnKind.RETURN_PAID) {
+                                        "You still owe"
+                                    } else {
+                                        "Still owes you"
+                                    },
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = TextSecondary,
+                                        fontSize = 11.5.sp
+                                    )
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    counterpartySuggestions.forEach { name ->
+                                        val selected = personName.equals(name, ignoreCase = true)
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .background(
+                                                    if (selected) {
+                                                        WalletAccent.copy(alpha = 0.18f)
+                                                    } else {
+                                                        CardBackgroundElevated
+                                                    }
+                                                )
+                                                .border(
+                                                    1.dp,
+                                                    if (selected) WalletAccent else CardBorderSubtle,
+                                                    RoundedCornerShape(16.dp)
+                                                )
+                                                .clickable { personName = name }
+                                                .padding(horizontal = 12.dp, vertical = 7.dp)
+                                        ) {
+                                            Text(
+                                                text = name,
+                                                style = MaterialTheme.typography.labelMedium.copy(
+                                                    color = if (selected) WalletAccent else TextPrimary,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontSize = 12.5.sp
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

@@ -27,6 +27,49 @@ data class BackupCategoryRecord(
     val createdAt: Long
 )
 
+data class BackupBudgetItemRecord(
+    val id: Long,
+    val purpose: String,
+    val amount: Double,
+    val isDone: Boolean,
+    val year: Int,
+    val month: Int,
+    val createdAt: Long
+)
+
+data class BackupLentReturnRecord(
+    val id: Long,
+    val personName: String,
+    val amount: Double,
+    val type: String,
+    val isReturned: Boolean,
+    val year: Int,
+    val month: Int,
+    val createdAt: Long
+)
+
+data class BackupSalaryRecord(
+    val year: Int,
+    val month: Int,
+    val amount: Double
+)
+
+data class BackupHeldMoneyRecord(
+    val id: Long,
+    val friendName: String,
+    val totalAmount: Double,
+    val createdAt: Long
+)
+
+data class BackupHeldMoneyTxRecord(
+    val id: Long,
+    val heldMoneyId: Long,
+    val type: String,
+    val amount: Double,
+    val note: String,
+    val createdAt: Long
+)
+
 data class BackupSettingsRecord(
     val currency: String = "INR",
     val currencySymbol: String = "₹",
@@ -36,8 +79,12 @@ data class BackupSettingsRecord(
     val connectedEmail: String = ""
 )
 
+/**
+ * Version 2 adds budget items, lents and returns, salary and held money.
+ * Version 1 files restore fine: the newer lists simply come back empty.
+ */
 data class MoneyMinderBackupFile(
-    val version: Int = 1,
+    val version: Int = BACKUP_FORMAT_VERSION,
     val backupId: String,
     val createdAt: Long,
     val deviceInfo: String,
@@ -48,8 +95,15 @@ data class MoneyMinderBackupFile(
     val cashBalanceSnapshot: Double,
     val transactions: List<BackupTransactionRecord>,
     val categories: List<BackupCategoryRecord>,
-    val settings: BackupSettingsRecord
+    val settings: BackupSettingsRecord,
+    val budgetItems: List<BackupBudgetItemRecord> = emptyList(),
+    val lentReturns: List<BackupLentReturnRecord> = emptyList(),
+    val salaries: List<BackupSalaryRecord> = emptyList(),
+    val heldMoney: List<BackupHeldMoneyRecord> = emptyList(),
+    val heldMoneyTransactions: List<BackupHeldMoneyTxRecord> = emptyList()
 )
+
+const val BACKUP_FORMAT_VERSION = 2
 
 data class BackupStatus(
     val lastBackupAt: Long = 0L,
